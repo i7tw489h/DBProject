@@ -1,6 +1,0 @@
-com\campus\canteen\controller\OrderController.class
-com\campus\canteen\mapper\OrderMapper.class
-com\campus\canteen\mapper\OrderItemMapper.class
-com\campus\canteen\service\impl\OrderServiceImpl.class
-com\campus\canteen\service\OrderService.class
-com\campus\canteen\controller\AdminController.class

@@ -72,6 +72,16 @@
         <el-form-item label="订单金额">
           <span class="order-total">¥{{ cartStore.totalPrice }}</span>
         </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="orderForm.remark"
+            type="textarea"
+            :rows="2"
+            placeholder="请输入特殊要求（如：不要辣、少盐等）"
+            maxlength="100"
+            show-word-limit
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showOrderModal = false">取消</el-button>
@@ -108,7 +118,8 @@ const showSuccessModal = ref(false)
 const pickupCode = ref('')
 
 const orderForm = reactive({
-  pickupTime: ''
+  pickupTime: '',
+  remark: ''
 })
 
 const increaseQty = (item) => {
@@ -150,14 +161,17 @@ const submitOrder = async () => {
     const orderItems = cartStore.items.map(item => ({
       dishId: item.dishId,
       quantity: item.quantity,
-      price: item.price
+      price: item.price,
+      name: item.name,
+      imageUrl: item.imageUrl
     }))
 
     const result = await orderApi.submitOrder({
       userId: userStore.user.userId,
       items: orderItems,
       pickupTime: orderForm.pickupTime,
-      totalAmount: parseFloat(cartStore.totalPrice)
+      totalAmount: parseFloat(cartStore.totalPrice),
+      remark: orderForm.remark
     })
 
     pickupCode.value = result.pickupCode

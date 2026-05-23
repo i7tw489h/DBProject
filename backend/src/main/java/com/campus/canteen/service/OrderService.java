@@ -12,8 +12,10 @@ public interface OrderService {
     Order getOrderDetail(String orderId);
     void cancelOrder(String orderId);
     List<Order> getAllOrders(Integer status);
+    List<Order> getAllOrders(Integer status, String pickupTime, Long windowId);
     void acceptOrder(String orderId);
     void serveOrder(String orderId);
+    void finishOrder(String orderId);
     void saveOrder(Order order, List<java.util.Map<String, Object>> items);
     Order getOrderById(String orderId);
 }

@@ -58,12 +58,28 @@
             <h2>📋 订单管理</h2>
             <div class="filter-group">
               <div class="filter-item">
-                <span class="filter-label">订单状态：</span>
-                <el-select v-model="orderStatus" value="all" @change="loadOrders">
+                <span class="filter-label">订单状态:</span>
+                <el-select v-model="orderStatus" value="all" @change="loadOrders" style="width: 120px;">
                   <el-option label="全部状态" value="all"></el-option>
                   <el-option label="待接单" :value="1"></el-option>
                   <el-option label="待出餐" :value="2"></el-option>
                   <el-option label="待取餐" :value="3"></el-option>
+                </el-select>
+              </div>
+              <div class="filter-item">
+                <span class="filter-label">取餐时间:</span>
+                <el-select v-model="pickupTimeFilter" value="all" @change="loadOrders" style="width: 120px;">
+                  <el-option label="全部时间" value="all"></el-option>
+                  <el-option label="11:30-12:00" value="11:30-12:00"></el-option>
+                  <el-option label="12:00-12:30" value="12:00-12:30"></el-option>
+                  <el-option label="12:30-13:00" value="12:30-13:00"></el-option>
+                </el-select>
+              </div>
+              <div class="filter-item">
+                <span class="filter-label">窗口:</span>
+                <el-select v-model="windowFilter" value="all" @change="loadOrders" style="width: 120px;">
+                  <el-option label="全部窗口" value="all"></el-option>
+                  <el-option v-for="win in windows" :key="win.windowId" :label="win.name" :value="win.windowId"></el-option>
                 </el-select>
               </div>
             </div>
@@ -106,81 +122,18 @@
             <el-table-column label="下单时间" width="150">
               <template #default="scope">{{ formatDate(scope.row.createdAt) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="150">
+            <el-table-column label="操作" width="100">
               <template #default="scope">
                 <el-button v-if="scope.row.status === 1" size="small" type="primary" @click="acceptOrder(scope.row)">接单</el-button>
                 <el-button v-if="scope.row.status === 2" size="small" type="success" @click="serveOrder(scope.row)">出餐</el-button>
-                <el-button size="small" @click="viewOrderDetail(scope.row)">详情</el-button>
+                <el-button v-if="scope.row.status === 3" size="small" type="info" disabled>待取餐</el-button>
+                <el-button v-if="scope.row.status === 4" size="small" type="info" disabled>已完成</el-button>
+                <el-button v-if="scope.row.status === 5" size="small" type="danger" disabled>已取消</el-button>
               </template>
             </el-table-column>
           </el-table>
 
-          <el-dialog v-model="orderDetailVisible" title="订单详情" width="600px">
-            <div v-if="currentOrder" class="order-detail">
-              <div class="detail-section">
-                <h4>基本信息</h4>
-                <div class="detail-row">
-                  <span class="detail-label">订单号：</span>
-                  <span class="detail-value">{{ currentOrder.orderId }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">下单时间：</span>
-                  <span class="detail-value">{{ formatDate(currentOrder.createdAt) }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">订单状态：</span>
-                  <el-tag :type="getOrderStatusType(currentOrder.status)">
-                    {{ getOrderStatusText(currentOrder.status) }}
-                  </el-tag>
-                </div>
-              </div>
-              <div class="detail-section">
-                <h4>用户信息</h4>
-                <div class="detail-row">
-                  <span class="detail-label">用户名：</span>
-                  <span class="detail-value">{{ currentOrder.userName }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">手机号：</span>
-                  <span class="detail-value">{{ currentOrder.phone }}</span>
-                </div>
-              </div>
-              <div class="detail-section">
-                <h4>取餐信息</h4>
-                <div class="detail-row">
-                  <span class="detail-label">取餐时间：</span>
-                  <span class="detail-value">{{ currentOrder.pickupTime }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">取餐码：</span>
-                  <span class="detail-value pickup-code">{{ currentOrder.pickupCode }}</span>
-                </div>
-                <div class="detail-row" v-if="currentOrder.remark">
-                  <span class="detail-label">特殊要求：</span>
-                  <span class="detail-value remark-content">{{ currentOrder.remark }}</span>
-                </div>
-              </div>
-              <div class="detail-section">
-                <h4>订单商品</h4>
-                <el-table :data="currentOrder.items" border size="small">
-                  <el-table-column prop="name" label="菜品名称"></el-table-column>
-                  <el-table-column prop="quantity" label="数量" width="80"></el-table-column>
-                  <el-table-column prop="price" label="单价" width="100">
-                    <template #default="scope">¥{{ scope.row.price }}</template>
-                  </el-table-column>
-                  <el-table-column prop="subtotal" label="小计" width="100">
-                    <template #default="scope">¥{{ scope.row.subtotal }}</template>
-                  </el-table-column>
-                </el-table>
-              </div>
-              <div class="detail-section total-section">
-                <div class="detail-row">
-                  <span class="detail-label">订单总额：</span>
-                  <span class="detail-value total-amount">¥{{ currentOrder.totalAmount }}</span>
-                </div>
-              </div>
-            </div>
-          </el-dialog>
+
         </div>
 
         <div v-if="activeMenu === 'inventory'">
@@ -301,8 +254,8 @@ const router = useRouter()
 const activeMenu = ref('dishes')
 const showAddModal = ref(false)
 const orderStatus = ref('all')
-const orderDetailVisible = ref(false)
-const currentOrder = ref(null)
+const pickupTimeFilter = ref('all')
+const windowFilter = ref('all')
 
 const dishList = ref([])
 const orderList = ref([])
@@ -356,11 +309,6 @@ const formatDate = (dateStr) => {
   })
 }
 
-const viewOrderDetail = (order) => {
-  currentOrder.value = order
-  orderDetailVisible.value = true
-}
-
 const loadDishes = async () => {
   try {
     const result = await adminApi.getDishList()
@@ -372,7 +320,16 @@ const loadDishes = async () => {
 
 const loadOrders = async () => {
   try {
-    const params = orderStatus.value !== 'all' ? { status: orderStatus.value } : {}
+    const params = {}
+    if (orderStatus.value !== 'all') {
+      params.status = orderStatus.value
+    }
+    if (pickupTimeFilter.value !== 'all') {
+      params.pickupTime = pickupTimeFilter.value
+    }
+    if (windowFilter.value !== 'all') {
+      params.windowId = windowFilter.value
+    }
     orderList.value = await orderApi.getAllOrders(params)
   } catch (error) {
     console.error('加载订单失败:', error)
@@ -531,7 +488,8 @@ onMounted(() => {
 
 .sidebar {
   width: 200px;
-  background: #34495e;
+  background: white;
+  border-right: 1px solid #e0e0e0;
 }
 
 .admin-menu {
@@ -539,13 +497,14 @@ onMounted(() => {
 }
 
 .admin-menu :deep(.el-menu-item) {
-  color: white;
+  color: #333;
   border-radius: 0;
 }
 
 .admin-menu :deep(.el-menu-item:hover),
 .admin-menu :deep(.el-menu-item.is-active) {
-  background: #2c3e50;
+  background: #f5f7fa;
+  color: #409eff;
 }
 
 .content {
@@ -563,6 +522,22 @@ onMounted(() => {
 
 .section-header h2 {
   color: #333;
+}
+
+.filter-group {
+  display: flex;
+  gap: 20px;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  color: #666;
+  font-size: 14px;
 }
 
 .dish-table, .order-table, .ranking-table {

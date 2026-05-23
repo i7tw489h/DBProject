@@ -1,0 +1,32 @@
+# ===== 后端 Maven 相关 ===== 
+backend/target/ 
+backend/*.jar 
+backend/*.war 
+backend/*.iml 
+backend/.idea/ 
+
+# ===== 前端 Node 相关 ===== 
+frontend/node_modules/ 
+frontend/.vite/ 
+frontend/dist/ 
+frontend/.nuxt/ 
+frontend/.next/ 
+
+# ===== IDE/编辑器配置 ===== 
+.idea/ 
+.vscode/ 
+*.iml 
+*.ipr 
+*.iws 
+.settings/ 
+.project 
+.classpath 
+
+# ===== 系统/临时文件 ===== 
+.DS_Store 
+Thumbs.db 
+*.log 
+*.tmp 
+*.bak 
+*.swp
+node_modules
