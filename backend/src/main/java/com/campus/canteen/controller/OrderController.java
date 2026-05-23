@@ -31,6 +31,7 @@ public class OrderController {
         Long userId = ((Number) body.get("userId")).longValue();
         List<Map<String, Object>> items = (List<Map<String, Object>>) body.get("items");
         String pickupTime = (String) body.get("pickupTime");
+        String remark = (String) body.get("remark");
 
         Order order = new Order();
         order.setOrderId(generateOrderId());
@@ -39,6 +40,7 @@ public class OrderController {
         order.setStatus(1);
         order.setPickupCode(generatePickupCode());
         order.setPickupTime(pickupTime);
+        order.setRemark(remark);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (Map<String, Object> item : items) {
@@ -76,9 +78,18 @@ public class OrderController {
         return Result.error("订单不存在");
     }
 
+    @GetMapping("/list")
+    public Result<?> getOrdersByUserWithStatus(@RequestParam Long userId, @RequestParam(required = false) Integer status) {
+        List<Order> orders = orderService.getOrdersByUserId(userId, status);
+        return Result.success(orders);
+    }
+
     @GetMapping("/all")
-    public Result<?> getAllOrders(@RequestParam(required = false) Integer status) {
-        List<Order> orders = orderService.getAllOrders(status);
+    public Result<?> getAllOrders(
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String pickupTime,
+            @RequestParam(required = false) Long windowId) {
+        List<Order> orders = orderService.getAllOrders(status, pickupTime, windowId);
         return Result.success(orders);
     }
 
@@ -92,6 +103,18 @@ public class OrderController {
     public Result<?> serveOrder(@PathVariable String orderId) {
         orderService.serveOrder(orderId);
         return Result.success("出餐成功");
+    }
+
+    @PutMapping("/finish/{orderId}")
+    public Result<?> finishOrder(@PathVariable String orderId) {
+        orderService.finishOrder(orderId);
+        return Result.success("取餐成功，订单已完成");
+    }
+
+    @PutMapping("/cancel/{orderId}")
+    public Result<?> cancelOrder(@PathVariable String orderId) {
+        orderService.cancelOrder(orderId);
+        return Result.success("取消成功");
     }
 
     private String generateOrderId() {
