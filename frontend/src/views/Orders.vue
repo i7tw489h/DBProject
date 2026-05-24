@@ -14,7 +14,9 @@
       <div class="tabs">
         <el-tabs v-model="activeTab" @tab-change="loadOrders">
           <el-tab-pane label="全部订单" name="all"></el-tab-pane>
-          <el-tab-pane label="待取餐" name="pending"></el-tab-pane>
+          <el-tab-pane label="待接单" name="pendingAccept"></el-tab-pane>
+          <el-tab-pane label="待出餐" name="pendingServe"></el-tab-pane>
+          <el-tab-pane label="待取餐" name="pendingPickup"></el-tab-pane>
           <el-tab-pane label="已完成" name="completed"></el-tab-pane>
           <el-tab-pane label="已取消" name="cancelled"></el-tab-pane>
         </el-tabs>
@@ -38,19 +40,24 @@
             </div>
           </div>
           
+          <div class="order-remark" v-if="order.remark">
+            <span class="remark-label">备注:</span>
+            <span class="remark-content">{{ order.remark }}</span>
+          </div>
+          
           <div class="order-footer">
             <div class="order-info">
-              <span>取餐码: <strong>{{ order.pickupCode }}</strong></span>
+              <span>取餐码: <strong class="pickup-code">{{ order.pickupCode }}</strong></span>
               <span>取餐时间: {{ order.pickupTime }}</span>
             </div>
             <div class="order-total">
-              合计: <span>¥{{ order.totalAmount }}</span>
+              合计: <span class="total-price">¥{{ order.totalAmount }}</span>
             </div>
           </div>
           
           <div class="order-actions">
-            <el-button v-if="order.status === 3" type="primary" size="small">去取餐</el-button>
-            <el-button v-if="order.status === 0 || order.status === 1 || order.status === 2" type="danger" size="small" @click="cancelOrder(order.orderId)">取消订单</el-button>
+            <el-button v-if="order.status === 3" type="primary" size="small" @click="finishOrder(order.orderId)">去取餐</el-button>
+            <el-button v-if="order.status === 1 || order.status === 2" type="danger" size="small" @click="cancelOrder(order.orderId)">取消订单</el-button>
           </div>
         </div>
       </div>
@@ -107,8 +114,14 @@ const loadOrders = async () => {
   
   let status = null
   switch (activeTab.value) {
-    case 'pending':
-      status = [1, 2, 3]
+    case 'pendingAccept':
+      status = 1
+      break
+    case 'pendingServe':
+      status = 2
+      break
+    case 'pendingPickup':
+      status = 3
       break
     case 'completed':
       status = 4
@@ -134,6 +147,16 @@ const cancelOrder = async (orderId) => {
     loadOrders()
   } catch (error) {
     ElMessage.error(error.message || '取消失败')
+  }
+}
+
+const finishOrder = async (orderId) => {
+  try {
+    await orderApi.finishOrder(orderId)
+    ElMessage.success('取餐成功，订单已完成')
+    loadOrders()
+  } catch (error) {
+    ElMessage.error(error.message || '取餐失败')
   }
 }
 
@@ -285,6 +308,24 @@ onMounted(() => {
   font-weight: bold;
 }
 
+.order-remark {
+  padding: 10px 20px;
+  background: #fff8e1;
+  border-left: 3px solid #ffc107;
+  margin: 0 20px;
+  border-radius: 4px;
+}
+
+.remark-label {
+  color: #ff9800;
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.remark-content {
+  color: #666;
+}
+
 .order-footer {
   display: flex;
   justify-content: space-between;
@@ -299,11 +340,12 @@ onMounted(() => {
   color: #666;
 }
 
-.order-info strong {
+.pickup-code {
   color: #e74c3c;
+  font-weight: bold;
 }
 
-.order-total span {
+.total-price {
   color: #e74c3c;
   font-weight: bold;
   font-size: 18px;

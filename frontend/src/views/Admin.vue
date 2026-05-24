@@ -56,34 +56,84 @@
         <div v-if="activeMenu === 'orders'">
           <div class="section-header">
             <h2>📋 订单管理</h2>
-            <el-select v-model="orderStatus" placeholder="筛选状态">
-              <el-option label="全部" value="all"></el-option>
-              <el-option label="待接单" :value="1"></el-option>
-              <el-option label="待出餐" :value="2"></el-option>
-              <el-option label="待取餐" :value="3"></el-option>
-            </el-select>
+            <div class="filter-group">
+              <div class="filter-item">
+                <span class="filter-label">订单状态:</span>
+                <el-select v-model="orderStatus" value="all" @change="loadOrders" style="width: 120px;">
+                  <el-option label="全部状态" value="all"></el-option>
+                  <el-option label="待接单" :value="1"></el-option>
+                  <el-option label="待出餐" :value="2"></el-option>
+                  <el-option label="待取餐" :value="3"></el-option>
+                </el-select>
+              </div>
+              <div class="filter-item">
+                <span class="filter-label">取餐时间:</span>
+                <el-select v-model="pickupTimeFilter" value="all" @change="loadOrders" style="width: 120px;">
+                  <el-option label="全部时间" value="all"></el-option>
+                  <el-option label="11:30-12:00" value="11:30-12:00"></el-option>
+                  <el-option label="12:00-12:30" value="12:00-12:30"></el-option>
+                  <el-option label="12:30-13:00" value="12:30-13:00"></el-option>
+                </el-select>
+              </div>
+              <div class="filter-item">
+                <span class="filter-label">窗口:</span>
+                <el-select v-model="windowFilter" value="all" @change="loadOrders" style="width: 120px;">
+                  <el-option label="全部窗口" value="all"></el-option>
+                  <el-option v-for="win in windows" :key="win.windowId" :label="win.name" :value="win.windowId"></el-option>
+                </el-select>
+              </div>
+            </div>
           </div>
           
           <el-table :data="orderList" border class="order-table">
-            <el-table-column prop="orderId" label="订单号"></el-table-column>
-            <el-table-column prop="userName" label="用户"></el-table-column>
-            <el-table-column prop="pickupTime" label="取餐时间"></el-table-column>
-            <el-table-column prop="pickupCode" label="取餐码"></el-table-column>
-            <el-table-column prop="totalAmount" label="金额"></el-table-column>
-            <el-table-column prop="status" label="状态">
+            <el-table-column prop="orderId" label="订单号" width="180"></el-table-column>
+            <el-table-column label="用户信息" width="200">
+              <template #default="scope">
+                <div class="user-info">
+                  <span class="user-name">{{ scope.row.userName }}</span>
+                  <span class="user-phone">{{ scope.row.phone }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="pickupTime" label="取餐时间" width="120"></el-table-column>
+            <el-table-column prop="pickupCode" label="取餐码" width="100">
+              <template #default="scope">
+                <span class="pickup-code">{{ scope.row.pickupCode }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="totalAmount" label="金额" width="100">
+              <template #default="scope">¥{{ scope.row.totalAmount }}</template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
               <template #default="scope">
                 <el-tag :type="getOrderStatusType(scope.row.status)">
                   {{ getOrderStatusText(scope.row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作">
+            <el-table-column label="备注" width="150">
+              <template #default="scope">
+                <span v-if="scope.row.remark" class="remark-text" :title="scope.row.remark">
+                  {{ scope.row.remark.length > 10 ? scope.row.remark.substring(0, 10) + '...' : scope.row.remark }}
+                </span>
+                <span v-else class="no-remark">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="下单时间" width="150">
+              <template #default="scope">{{ formatDate(scope.row.createdAt) }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="100">
               <template #default="scope">
                 <el-button v-if="scope.row.status === 1" size="small" type="primary" @click="acceptOrder(scope.row)">接单</el-button>
                 <el-button v-if="scope.row.status === 2" size="small" type="success" @click="serveOrder(scope.row)">出餐</el-button>
+                <el-button v-if="scope.row.status === 3" size="small" type="info" disabled>待取餐</el-button>
+                <el-button v-if="scope.row.status === 4" size="small" type="info" disabled>已完成</el-button>
+                <el-button v-if="scope.row.status === 5" size="small" type="danger" disabled>已取消</el-button>
               </template>
             </el-table-column>
           </el-table>
+
+
         </div>
 
         <div v-if="activeMenu === 'inventory'">
@@ -204,6 +254,8 @@ const router = useRouter()
 const activeMenu = ref('dishes')
 const showAddModal = ref(false)
 const orderStatus = ref('all')
+const pickupTimeFilter = ref('all')
+const windowFilter = ref('all')
 
 const dishList = ref([])
 const orderList = ref([])
@@ -246,6 +298,17 @@ const orderStatusTypeMap = {
 const getOrderStatusText = (status) => orderStatusMap[status] || '未知'
 const getOrderStatusType = (status) => orderStatusTypeMap[status] || 'default'
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 const loadDishes = async () => {
   try {
     const result = await adminApi.getDishList()
@@ -257,7 +320,16 @@ const loadDishes = async () => {
 
 const loadOrders = async () => {
   try {
-    const params = orderStatus.value !== 'all' ? { status: orderStatus.value } : {}
+    const params = {}
+    if (orderStatus.value !== 'all') {
+      params.status = orderStatus.value
+    }
+    if (pickupTimeFilter.value !== 'all') {
+      params.pickupTime = pickupTimeFilter.value
+    }
+    if (windowFilter.value !== 'all') {
+      params.windowId = windowFilter.value
+    }
     orderList.value = await orderApi.getAllOrders(params)
   } catch (error) {
     console.error('加载订单失败:', error)
@@ -416,7 +488,8 @@ onMounted(() => {
 
 .sidebar {
   width: 200px;
-  background: #34495e;
+  background: white;
+  border-right: 1px solid #e0e0e0;
 }
 
 .admin-menu {
@@ -424,13 +497,14 @@ onMounted(() => {
 }
 
 .admin-menu :deep(.el-menu-item) {
-  color: white;
+  color: #333;
   border-radius: 0;
 }
 
 .admin-menu :deep(.el-menu-item:hover),
 .admin-menu :deep(.el-menu-item.is-active) {
-  background: #2c3e50;
+  background: #f5f7fa;
+  color: #409eff;
 }
 
 .content {
@@ -448,6 +522,22 @@ onMounted(() => {
 
 .section-header h2 {
   color: #333;
+}
+
+.filter-group {
+  display: flex;
+  gap: 20px;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  color: #666;
+  font-size: 14px;
 }
 
 .dish-table, .order-table, .ranking-table {
@@ -538,5 +628,105 @@ onMounted(() => {
 
 .dish-form {
   padding: 20px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 15px;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  color: #606266;
+  font-size: 14px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #303133;
+}
+
+.user-phone {
+  font-size: 12px;
+  color: #909399;
+}
+
+.pickup-code {
+  color: #409eff;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.remark-text {
+  color: #e6a23c;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.no-remark {
+  color: #c0c4cc;
+}
+
+.order-detail {
+  padding: 10px;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section h4 {
+  margin-bottom: 12px;
+  color: #303133;
+  border-bottom: 1px solid #ebeef5;
+  padding-bottom: 8px;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.detail-label {
+  color: #606266;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: #303133;
+}
+
+.remark-content {
+  color: #e6a23c;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: #fdf6ec;
+  border-radius: 4px;
+  border: 1px solid #f5dab1;
+}
+
+.total-section {
+  border-top: 2px solid #ebeef5;
+  padding-top: 15px;
+  margin-top: 20px;
+}
+
+.total-amount {
+  font-size: 18px;
+  font-weight: bold;
+  color: #f56c6c;
 }
 </style>

@@ -16,8 +16,13 @@ public class Order {
     private Integer status;
     private String pickupCode;
     private String pickupTime;
+    private String remark;
     @TableField(exist = false)
     private List<OrderItem> items;
+    @TableField(exist = false)
+    private String userName;
+    @TableField(exist = false)
+    private String phone;
     private LocalDateTime paymentTime;
     private LocalDateTime acceptTime;
     private LocalDateTime serveTime;

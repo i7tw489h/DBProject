@@ -95,6 +95,9 @@ export const orderApi = {
   },
   serveOrder(orderId) {
     return instance.put(`/order/serve/${orderId}`)
+  },
+  finishOrder(orderId) {
+    return instance.put(`/order/finish/${orderId}`)
   }
 }
 

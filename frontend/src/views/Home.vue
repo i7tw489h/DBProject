@@ -16,7 +16,7 @@
       </div>
       <div class="header-right">
         <el-button @click="goToCart" class="cart-btn">
-          <ShoppingCart />
+          <img src="/images/dishes/购物车.svg" alt="购物车" class="cart-icon" />
           <span v-if="cartStore.totalCount > 0" class="cart-badge">{{ cartStore.totalCount }}</span>
         </el-button>
         <el-dropdown>
@@ -300,6 +300,12 @@ onMounted(() => {
 
 .cart-btn {
   position: relative;
+  padding: 8px;
+}
+
+.cart-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .cart-badge {
