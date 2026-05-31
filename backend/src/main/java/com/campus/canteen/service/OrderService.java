@@ -18,4 +18,5 @@ public interface OrderService {
     void finishOrder(String orderId);
     void saveOrder(Order order, List<java.util.Map<String, Object>> items);
     Order getOrderById(String orderId);
+    void deleteOrder(String orderId);
 }

@@ -72,13 +72,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useCartStore } from '@/stores'
+import { useCartStore, useUserStore } from '@/stores'
 import { dishApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 
 const dishData = ref(null)
 const quantity = ref(1)
@@ -133,10 +134,19 @@ const decreaseQty = () => {
 }
 
 const addToCart = () => {
-  for (let i = 0; i < quantity.value; i++) {
-    cartStore.addItem(dishData.value.dish)
+  const nutrition = dishData.value.nutrition || {}
+  const dish = {
+    ...dishData.value.dish,
+    calories: Number(nutrition.calories) || 0,
+    protein: Number(nutrition.protein) || 0,
+    fat: Number(nutrition.fat) || 0,
+    carbs: Number(nutrition.carbs) || 0
   }
-  ElMessage.success(`已添加 ${quantity.value} 份 ${dishData.value.dish.name} 到购物车`)
+  cartStore.addItem(dish, quantity.value)
+  if (userStore.user) {
+    cartStore.persistCart(userStore.user.userId)
+  }
+  ElMessage.success(`已添加 ${quantity.value} 份 ${dish.name} 到购物车`)
   quantity.value = 1
 }
 

@@ -117,6 +117,12 @@ public class OrderController {
         return Result.success("取消成功");
     }
 
+    @DeleteMapping("/{orderId}")
+    public Result<?> deleteOrder(@PathVariable String orderId) {
+        orderService.deleteOrder(orderId);
+        return Result.success("删除成功");
+    }
+
     private String generateOrderId() {
         return "ORD" + System.currentTimeMillis() + (int)(Math.random() * 1000);
     }

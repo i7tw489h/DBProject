@@ -195,4 +195,10 @@ public class OrderServiceImpl implements OrderService {
     public Order getOrderById(String orderId) {
         return orderMapper.selectById(orderId);
     }
+
+    @Override
+    public void deleteOrder(String orderId) {
+        orderItemMapper.deleteByOrderId(orderId);
+        orderMapper.deleteById(orderId);
+    }
 }

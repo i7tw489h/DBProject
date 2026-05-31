@@ -35,6 +35,19 @@ export const useUserStore = defineStore('user', () => {
   return { user, token, isLogin, login, logout, autoLogin }
 })
 
+function normalizeNutrition(dish) {
+  return {
+    calories: Number(dish.calories) || 0,
+    protein: Number(dish.protein) || 0,
+    fat: Number(dish.fat) || 0,
+    carbs: Number(dish.carbs) || 0
+  }
+}
+
+function getCartStorageKey(userId) {
+  return userId ? `cart_${userId}` : 'cart_guest'
+}
+
 export const useCartStore = defineStore('cart', () => {
   const items = ref([])
 
@@ -46,12 +59,41 @@ export const useCartStore = defineStore('cart', () => {
     return items.value.reduce((sum, item) => sum + item.quantity, 0)
   })
 
-  function addItem(dish) {
+  function persistCart(userId) {
+    if (!userId) return
+    localStorage.setItem(getCartStorageKey(userId), JSON.stringify(items.value))
+  }
+
+  function loadCart(userId) {
+    if (!userId) {
+      items.value = []
+      return
+    }
+    try {
+      const saved = localStorage.getItem(getCartStorageKey(userId))
+      items.value = saved ? JSON.parse(saved) : []
+    } catch (error) {
+      console.error('加载购物车失败:', error)
+      items.value = []
+    }
+  }
+
+  function addItem(dish, quantity = 1) {
+    const nutrition = normalizeNutrition(dish)
     const existing = items.value.find(item => item.dishId === dish.dishId)
     if (existing) {
-      existing.quantity++
+      existing.quantity += quantity
+      Object.assign(existing, nutrition)
     } else {
-      items.value.push({ ...dish, quantity: 1 })
+      items.value.push({
+        dishId: dish.dishId,
+        name: dish.name,
+        price: dish.price,
+        imageUrl: dish.imageUrl,
+        categoryName: dish.categoryName,
+        ...nutrition,
+        quantity
+      })
     }
   }
 
@@ -73,9 +115,12 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  function clearCart() {
+  function clearCart(userId) {
     items.value = []
+    if (userId) {
+      localStorage.removeItem(getCartStorageKey(userId))
+    }
   }
 
-  return { items, totalPrice, totalCount, addItem, removeItem, updateQuantity, clearCart }
+  return { items, totalPrice, totalCount, addItem, removeItem, updateQuantity, clearCart, loadCart, persistCart }
 })

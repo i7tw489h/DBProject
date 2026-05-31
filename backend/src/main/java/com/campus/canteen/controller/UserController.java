@@ -25,11 +25,11 @@ public class UserController {
                               @RequestParam(required = false) String name,
                               @RequestParam(required = false) String college,
                               @RequestParam(required = false) String phone) {
-        
-        String userAccount = (body != null && body.get("username") != null) ? body.get("username") : 
+
+        String userAccount = (body != null && body.get("username") != null) ? body.get("username") :
                            (body != null && body.get("account") != null) ? body.get("account") :
                            (username != null ? username : account);
-        
+
         String userPassword = (body != null && body.get("password") != null) ? body.get("password") : password;
         String userName = (body != null && body.get("name") != null) ? body.get("name") : name;
         String userCollege = (body != null && body.get("college") != null) ? body.get("college") : college;
@@ -57,11 +57,11 @@ public class UserController {
                            @RequestParam(required = false) String username,
                            @RequestParam(required = false) String account,
                            @RequestParam(required = false) String password) {
-        
-        String userAccount = (body != null && body.get("username") != null) ? body.get("username") : 
+
+        String userAccount = (body != null && body.get("username") != null) ? body.get("username") :
                            (body != null && body.get("account") != null) ? body.get("account") :
                            (username != null ? username : account);
-        
+
         String userPassword = (body != null && body.get("password") != null) ? body.get("password") : password;
 
         if (userAccount == null || userPassword == null) {
@@ -109,5 +109,23 @@ public class UserController {
         }
         userService.updateById(user);
         return Result.success("更新成功");
+    }
+
+    @PutMapping("/password")
+    public Result<?> updatePassword(@RequestBody Map<String, Object> params) {
+        Long userId = ((Number) params.get("userId")).longValue();
+        String oldPassword = (String) params.get("oldPassword");
+        String newPassword = (String) params.get("newPassword");
+
+        if (userId == null || oldPassword == null || newPassword == null) {
+            return Result.error("参数不完整");
+        }
+
+        try {
+            userService.updatePassword(userId, oldPassword, newPassword);
+            return Result.success("密码修改成功");
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
     }
 }

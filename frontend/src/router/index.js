@@ -45,6 +45,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('../views/Admin.vue'),
@@ -67,7 +73,6 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const canteenAdmin = localStorage.getItem('canteenAdmin')
 
-  // 如果访问食堂管理员页面
   if (to.meta.isCanteenAdmin) {
     if (!canteenAdmin) {
       next('/admin-login')
@@ -77,7 +82,6 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 如果访问学生页面且需要登录
   if (to.meta.requiresAuth) {
     if (!userStore.isLogin) {
       next('/login')
@@ -85,7 +89,6 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  // 已登录用户访问登录/注册页，跳转到首页
   if (to.path === '/login' || to.path === '/register') {
     if (userStore.isLogin) {
       next('/')

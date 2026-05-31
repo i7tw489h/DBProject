@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore, useCartStore } from '@/stores'
 import { orderApi } from '@/api'
@@ -122,20 +122,29 @@ const orderForm = reactive({
   remark: ''
 })
 
+const persistCart = () => {
+  if (userStore.user) {
+    cartStore.persistCart(userStore.user.userId)
+  }
+}
+
 const increaseQty = (item) => {
   cartStore.updateQuantity(item.dishId, item.quantity + 1)
+  persistCart()
 }
 
 const decreaseQty = (item) => {
   cartStore.updateQuantity(item.dishId, item.quantity - 1)
+  persistCart()
 }
 
 const removeItem = (item) => {
   cartStore.removeItem(item.dishId)
+  persistCart()
 }
 
 const clearCart = () => {
-  cartStore.clearCart()
+  cartStore.clearCart(userStore.user?.userId)
 }
 
 const goBack = () => {
@@ -177,11 +186,17 @@ const submitOrder = async () => {
     pickupCode.value = result.pickupCode
     showOrderModal.value = false
     showSuccessModal.value = true
-    cartStore.clearCart()
+    cartStore.clearCart(userStore.user.userId)
   } catch (error) {
     ElMessage.error(error.message || '下单失败')
   }
 }
+
+onMounted(() => {
+  if (userStore.user) {
+    cartStore.loadCart(userStore.user.userId)
+  }
+})
 
 const goToOrders = () => {
   showSuccessModal.value = false

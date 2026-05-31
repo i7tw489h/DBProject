@@ -11,6 +11,8 @@ public class OrderItem {
     @TableId(type = IdType.AUTO)
     private Long itemId;
     private String orderId;
+    @TableField(exist = false)
+    private Long userId;
     private Long dishId;
     private String name;
     private String imageUrl;

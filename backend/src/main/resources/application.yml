@@ -44,3 +44,11 @@ jwt:
 logging:
   level:
     com.campus.canteen: debug
+
+ai:
+  enabled: true
+  alibaba:
+    api-key: your-api-key
+    api-url: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+    model: qwen-plus-2025-07-28
+    fallback-on-error: false

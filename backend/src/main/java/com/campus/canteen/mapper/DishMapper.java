@@ -11,11 +11,29 @@ import java.util.List;
 @Mapper
 public interface DishMapper extends BaseMapper<Dish> {
 
-    @Select("SELECT * FROM v_dish_nutrition WHERE is_shelf = 1")
+    @Select("SELECT * FROM v_dish_nutrition")
     List<Dish> selectAllWithNutrition();
 
-    @Select("SELECT * FROM v_dish_nutrition WHERE category_id = #{categoryId} AND is_shelf = 1")
-    List<Dish> selectByCategory(Long categoryId);
+    @Select("SELECT * FROM v_dish_nutrition WHERE category_id = #{categoryId}")
+    List<Dish> selectByCategoryWithNutrition(Long categoryId);
+
+    @Select("SELECT * FROM v_dish_nutrition WHERE window_id = #{windowId}")
+    List<Dish> selectByWindowWithNutrition(Long windowId);
+
+    @Select("SELECT * FROM v_dish_nutrition WHERE category_id = #{categoryId} AND window_id = #{windowId}")
+    List<Dish> selectByCategoryAndWindowWithNutrition(Long categoryId, Long windowId);
+
+    @Select("SELECT * FROM v_dish_nutrition WHERE name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%')")
+    List<Dish> selectByKeywordWithNutrition(String keyword);
+
+    @Select("SELECT * FROM v_dish_nutrition WHERE category_id = #{categoryId} AND (name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))")
+    List<Dish> selectByCategoryAndKeywordWithNutrition(Long categoryId, String keyword);
+
+    @Select("SELECT * FROM v_dish_nutrition WHERE window_id = #{windowId} AND (name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))")
+    List<Dish> selectByWindowAndKeywordWithNutrition(Long windowId, String keyword);
+
+    @Select("SELECT * FROM v_dish_nutrition WHERE category_id = #{categoryId} AND window_id = #{windowId} AND (name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))")
+    List<Dish> selectByCategoryWindowAndKeywordWithNutrition(Long categoryId, Long windowId, String keyword);
 
     @Select("SELECT d.* FROM dishes d JOIN windows w ON d.window_id = w.window_id " +
             "WHERE w.floor = #{floor} AND d.is_shelf = 1")

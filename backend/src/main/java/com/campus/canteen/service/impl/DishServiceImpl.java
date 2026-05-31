@@ -13,9 +13,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements DishService {
@@ -23,7 +25,6 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
     @Autowired
     private NutritionMapper nutritionMapper;
 
-    // 菜品名称到图片文件的映射
     private static final Map<String, String> DISH_IMAGE_MAP = new HashMap<>();
     static {
         DISH_IMAGE_MAP.put("宫保鸡丁", "/images/dishes/1.jpg");
@@ -42,7 +43,6 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         DISH_IMAGE_MAP.put("花卷", "/images/dishes/花卷.jpg");
     }
 
-    // 自动填充图片路径
     private void fillImageUrl(Dish dish) {
         if (dish != null && (dish.getImageUrl() == null || dish.getImageUrl().isEmpty())) {
             String imageUrl = DISH_IMAGE_MAP.get(dish.getName());
@@ -60,70 +60,80 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         }
     }
 
+    private void fillNutrition(List<Dish> dishes) {
+        if (dishes == null || dishes.isEmpty()) {
+            return;
+        }
+        List<Long> dishIds = dishes.stream()
+                .map(Dish::getDishId)
+                .collect(Collectors.toList());
+        LambdaQueryWrapper<Nutrition> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(Nutrition::getDishId, dishIds);
+        List<Nutrition> nutritionList = nutritionMapper.selectList(wrapper);
+        Map<Long, Nutrition> nutritionMap = nutritionList.stream()
+                .collect(Collectors.toMap(Nutrition::getDishId, n -> n, (a, b) -> a));
+        for (Dish dish : dishes) {
+            Nutrition nutrition = nutritionMap.get(dish.getDishId());
+            if (nutrition != null) {
+                dish.setCalories(nutrition.getCalories());
+                dish.setProtein(nutrition.getProtein());
+                dish.setFat(nutrition.getFat());
+                dish.setCarbs(nutrition.getCarbs());
+                dish.setSodium(nutrition.getSodium());
+                dish.setFiber(nutrition.getFiber());
+            }
+        }
+    }
+
+    private List<Dish> prepareDishes(List<Dish> dishes) {
+        fillImageUrl(dishes);
+        fillNutrition(dishes);
+        return dishes;
+    }
+
     @Override
     public List<Dish> getAllDishes() {
-        List<Dish> dishes = baseMapper.selectAllWithNutrition();
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectAllWithNutrition());
     }
 
     @Override
     public List<Dish> getDishesByCategory(Long categoryId) {
-        LambdaQueryWrapper<Dish> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Dish::getCategoryId, categoryId)
-               .eq(Dish::getIsShelf, 1);
-        List<Dish> dishes = this.baseMapper.selectList(wrapper);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByCategoryWithNutrition(categoryId));
     }
 
     @Override
     public List<Dish> getDishesByFloor(Integer floor) {
-        List<Dish> dishes = baseMapper.selectByFloor(floor);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByFloor(floor));
     }
 
     @Override
     public List<Dish> getDishesByWindow(Long windowId) {
-        List<Dish> dishes = baseMapper.selectByWindow(windowId);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByWindowWithNutrition(windowId));
     }
 
     @Override
     public List<Dish> getDishesByCategoryAndWindow(Long categoryId, Long windowId) {
-        List<Dish> dishes = baseMapper.selectByCategoryAndWindow(categoryId, windowId);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByCategoryAndWindowWithNutrition(categoryId, windowId));
     }
 
     @Override
     public List<Dish> searchDishes(String keyword) {
-        List<Dish> dishes = baseMapper.selectByKeyword(keyword);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByKeyword(keyword));
     }
 
     @Override
     public List<Dish> searchDishesByCategory(Long categoryId, String keyword) {
-        List<Dish> dishes = baseMapper.selectByCategoryAndKeyword(categoryId, keyword);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByCategoryAndKeyword(categoryId, keyword));
     }
 
     @Override
     public List<Dish> searchDishesByWindow(Long windowId, String keyword) {
-        List<Dish> dishes = baseMapper.selectByWindowAndKeyword(windowId, keyword);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByWindowAndKeyword(windowId, keyword));
     }
 
     @Override
     public List<Dish> searchDishesByCategoryAndWindow(Long categoryId, Long windowId, String keyword) {
-        List<Dish> dishes = baseMapper.selectByCategoryWindowAndKeyword(categoryId, windowId, keyword);
-        fillImageUrl(dishes);
-        return dishes;
+        return prepareDishes(baseMapper.selectByCategoryWindowAndKeyword(categoryId, windowId, keyword));
     }
 
     @Override
@@ -133,25 +143,26 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         wrapper.eq(Dish::getIsShelf, 1)
                .orderByDesc(Dish::getSalesCount);
         this.baseMapper.selectPage(page, wrapper);
-        fillImageUrl(page.getRecords());
-        return new PageResult<>(page.getTotal(), page.getRecords(), 
+        prepareDishes(page.getRecords());
+        return new PageResult<>(page.getTotal(), page.getRecords(),
                                page.getCurrent(), page.getSize());
     }
 
     @Override
     public Dish getDishDetail(Long dishId) {
         Dish dish = this.baseMapper.selectById(dishId);
-        fillImageUrl(dish);
+        if (dish != null) {
+            fillImageUrl(dish);
+            fillNutrition(Collections.singletonList(dish));
+        }
         return dish;
     }
 
     @Override
     public Map<String, Object> getDishWithNutrition(Long dishId) {
         Map<String, Object> result = new HashMap<>();
-        Dish dish = this.baseMapper.selectById(dishId);
-        fillImageUrl(dish);
-        Nutrition nutrition;
-        nutrition = nutritionMapper.selectNutritionByDishId(dishId);
+        Dish dish = getDishDetail(dishId);
+        Nutrition nutrition = nutritionMapper.selectNutritionByDishId(dishId);
         result.put("dish", dish);
         result.put("nutrition", nutrition);
         return result;

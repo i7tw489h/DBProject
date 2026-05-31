@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const instance = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -35,6 +35,12 @@ export const userApi = {
   },
   updateProfile(data) {
     return instance.put('/user/update-profile', data)
+  },
+  updateUser(data) {
+    return instance.put('/user/update', data)
+  },
+  updatePassword(data) {
+    return instance.put('/user/password', data)
   }
 }
 
@@ -98,6 +104,9 @@ export const orderApi = {
   },
   finishOrder(orderId) {
     return instance.put(`/order/finish/${orderId}`)
+  },
+  deleteOrder(orderId) {
+    return instance.delete(`/order/${orderId}`)
   }
 }
 
@@ -110,12 +119,16 @@ export const nutritionApi = {
   },
   getHealthEvaluation(userId) {
     return instance.get(`/nutrition/evaluation/${userId}`)
+  },
+  getNutritionTargets(userId) {
+    return instance.get(`/nutrition/targets/${userId}`)
   }
 }
 
 export const aiApi = {
   recommendDishes(userId) {
-    return instance.get(`/ai/recommend/${userId}`)
+    // 添加时间戳参数防止缓存
+    return instance.get(`/ai/recommend/${userId}`, { params: { t: Date.now() } })
   },
   intelligentMeal(userId, type) {
     return instance.get(`/ai/meal/${userId}`, { params: { type } })
@@ -139,7 +152,7 @@ export const adminApi = {
     return instance.delete(`/admin/dishes/${id}`)
   },
   toggleDishStatus(id) {
-    return instance.put(`/admin/dishes/status/${id}`)
+    return instance.put('/admin/dishes/status/${id}')
   },
   getSalesRanking() {
     return instance.get('/admin/sales-ranking')

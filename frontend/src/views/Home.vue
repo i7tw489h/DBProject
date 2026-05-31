@@ -6,8 +6,8 @@
         <span class="title">校园AI食堂</span>
       </div>
       <div class="header-center">
-        <el-input 
-          v-model="searchKeyword" 
+        <el-input
+          v-model="searchKeyword"
           placeholder="搜索菜品..."
           class="search-input"
           @keyup.enter="handleSearch"
@@ -26,6 +26,7 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item @click="goToProfile">个人中心</el-dropdown-item>
               <el-dropdown-item @click="goToNutrition">营养中心</el-dropdown-item>
               <el-dropdown-item @click="goToOrders">我的订单</el-dropdown-item>
               <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
@@ -55,17 +56,17 @@
 
         <div class="category-section">
           <h3>菜品分类</h3>
-          <el-menu :default-active="activeCategory" class="category-menu">
+          <el-menu :default-active="activeCategory.toString()" class="category-menu">
             <el-menu-item index="0" @click="selectCategory(0)">全部菜品</el-menu-item>
             <el-menu-item v-for="cat in categories" :key="cat.categoryId" :index="cat.categoryId.toString()" @click="selectCategory(cat.categoryId)">
               {{ cat.name }}
             </el-menu-item>
           </el-menu>
         </div>
-        
+
         <div class="window-section">
           <h3>选择窗口</h3>
-          <el-menu :default-active="activeWindow" class="window-menu">
+          <el-menu :default-active="activeWindow.toString()" class="window-menu">
             <el-menu-item index="0" @click="selectWindow(0)">全部窗口</el-menu-item>
             <el-menu-item v-for="win in windows" :key="win.windowId" :index="win.windowId.toString()" @click="selectWindow(win.windowId)">
               {{ win.name }}
@@ -75,13 +76,13 @@
       </aside>
 
       <main class="content">
-        <div class="ai-recommend" v-if="recommendations.length > 0">
+        <div class="ai-recommend" v-if="flattenedRecommendations.length > 0">
           <div class="section-header">
             <h2>🤖 AI为您推荐</h2>
             <el-button type="text" @click="refreshRecommend">换一批</el-button>
           </div>
           <div class="dish-grid recommend-grid">
-            <div class="dish-card" v-for="dish in recommendations" :key="dish.dishId" @click="goToDetail(dish.dishId)">
+            <div class="dish-card" v-for="dish in flattenedRecommendations" :key="dish.dishId" @click="goToDetail(dish.dishId)">
               <img v-if="dish.imageUrl" :src="dish.imageUrl" alt="菜品图片" class="dish-image" />
               <div v-else class="dish-emoji"><span>{{ getDishEmoji(dish.name) }}</span></div>
               <div class="dish-info">
@@ -120,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ShoppingCart, User } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore, useCartStore } from '@/stores'
@@ -137,6 +138,29 @@ const categories = ref([])
 const windows = ref([])
 const dishes = ref([])
 const recommendations = ref([])
+
+// 扁平化推荐数据（从分组结构中提取所有菜品）
+const flattenedRecommendations = computed(() => {
+  if (!recommendations.value || recommendations.value.length === 0) {
+    return []
+  }
+  // 从分组结构中提取所有菜品
+  const allDishes = []
+  const dishIdSet = new Set() // 去重
+  
+  recommendations.value.forEach(group => {
+    if (group.dishes && group.dishes.length > 0) {
+      group.dishes.forEach(dish => {
+        if (dish.dishId && !dishIdSet.has(dish.dishId)) {
+          dishIdSet.add(dish.dishId)
+          allDishes.push(dish)
+        }
+      })
+    }
+  })
+  
+  return allDishes.slice(0, 6) // 只取前6个推荐
+})
 
 const loadCategories = async () => {
   try {
@@ -177,7 +201,27 @@ const loadDishes = async () => {
 const loadRecommendations = async () => {
   if (!userStore.user) return
   try {
-    recommendations.value = await aiApi.recommendDishes(userStore.user.userId)
+    console.log(`发送推荐请求，用户ID: ${userStore.user.userId}`)
+    const startTime = Date.now()
+    const data = await aiApi.recommendDishes(userStore.user.userId, { cache: false })
+    const endTime = Date.now()
+    console.log(`推荐请求耗时: ${endTime - startTime}ms`)
+    console.log('返回的推荐数据:', data)
+    
+    // 检查每个推荐组的菜品顺序
+    data.forEach((group, index) => {
+      if (group.dishes && group.dishes.length > 0) {
+        const dishNames = group.dishes.map(d => d.name).join(', ')
+        console.log(`推荐组 ${index + 1} (${group.title}): ${dishNames}`)
+      }
+    })
+    
+    // 强制更新响应式数据
+    recommendations.value = []
+    setTimeout(() => {
+      recommendations.value = data
+      console.log('推荐数据已更新')
+    }, 0)
   } catch (error) {
     console.error('加载推荐失败:', error)
   }
@@ -205,6 +249,7 @@ const handleSearch = () => {
 }
 
 const refreshRecommend = () => {
+  console.log('点击换一批，重新加载推荐...')
   loadRecommendations()
 }
 
@@ -227,6 +272,10 @@ const goToCart = () => {
   router.push('/cart')
 }
 
+const goToProfile = () => {
+  router.push('/profile')
+}
+
 const goToNutrition = () => {
   router.push('/nutrition')
 }
@@ -237,6 +286,9 @@ const goToOrders = () => {
 
 const addToCart = (dish) => {
   cartStore.addItem(dish)
+  if (userStore.user) {
+    cartStore.persistCart(userStore.user.userId)
+  }
 }
 
 const handleLogout = () => {
@@ -245,6 +297,9 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
+  if (userStore.user) {
+    cartStore.loadCart(userStore.user.userId)
+  }
   loadCategories()
   loadWindows()
   loadDishes()
