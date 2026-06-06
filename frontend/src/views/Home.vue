@@ -76,6 +76,26 @@
       </aside>
 
       <main class="content">
+        <!-- 符合忌口推荐 -->
+        <div class="ai-recommend restriction-recommend" v-if="restrictionDishes.length > 0">
+          <div class="section-header">
+            <h2>符合忌口</h2>
+            <span class="section-desc">根据您的忌口偏好推荐</span>
+          </div>
+          <div class="dish-grid recommend-grid">
+            <div class="dish-card" v-for="dish in restrictionDishes" :key="dish.dishId" @click="goToDetail(dish.dishId)">
+              <img v-if="dish.imageUrl" :src="dish.imageUrl" alt="菜品图片" class="dish-image" />
+              <div v-else class="dish-emoji"><span>{{ getDishEmoji(dish.name) }}</span></div>
+              <div class="dish-info">
+                <h4>{{ dish.name }}</h4>
+                <p class="price">¥{{ dish.price }}</p>
+                <p class="nutrition">热量: {{ dish.calories }}kcal</p>
+              </div>
+              <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
+            </div>
+          </div>
+        </div>
+
         <div class="ai-recommend" v-if="flattenedRecommendations.length > 0">
           <div class="section-header">
             <h2>🤖 AI为您推荐</h2>
@@ -125,7 +145,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ShoppingCart, User } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore, useCartStore } from '@/stores'
-import { dishApi, aiApi } from '@/api'
+import { dishApi, aiApi, restrictionApi } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -138,6 +158,7 @@ const categories = ref([])
 const windows = ref([])
 const dishes = ref([])
 const recommendations = ref([])
+const restrictionDishes = ref([])
 
 // 扁平化推荐数据（从分组结构中提取所有菜品）
 const flattenedRecommendations = computed(() => {
@@ -227,6 +248,20 @@ const loadRecommendations = async () => {
   }
 }
 
+// 加载符合忌口的推荐菜品
+const loadRestrictionDishes = async () => {
+  if (!userStore.user) return
+  try {
+    console.log('加载符合忌口的菜品...')
+    const dishes = await restrictionApi.getRecommendedDishes(userStore.user.userId)
+    restrictionDishes.value = dishes || []
+    console.log('符合忌口的菜品:', restrictionDishes.value)
+  } catch (error) {
+    console.error('加载符合忌口菜品失败:', error)
+    restrictionDishes.value = []
+  }
+}
+
 const selectCategory = (id) => {
   activeCategory.value = id
   loadDishes()
@@ -304,6 +339,7 @@ onMounted(() => {
   loadWindows()
   loadDishes()
   loadRecommendations()
+  loadRestrictionDishes()
 })
 </script>
 
@@ -434,6 +470,23 @@ onMounted(() => {
 
 .recommend-grid {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.restriction-recommend {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.restriction-recommend .section-header h2 {
+  color: #2e7d32;
+}
+
+.section-desc {
+  color: #666;
+  font-size: 14px;
+  margin-left: 10px;
 }
 
 .dish-card {
