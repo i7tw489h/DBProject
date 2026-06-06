@@ -108,11 +108,11 @@
         </div>
         <div class="add-restriction">
           <el-select v-model="newRestriction.type" placeholder="选择忌口类型" style="width: 150px">
-            <el-option label="不吃辣" :value="0" />
-            <el-option label="不吃香菜" :value="1" />
-            <el-option label="清真" :value="2" />
-            <el-option label="过敏" :value="3" />
-            <el-option label="素食" :value="4" />
+            <el-option label="过敏" :value="1" />
+            <el-option label="宗教" :value="2" />
+            <el-option label="素食" :value="3" />
+            <el-option label="疾病" :value="4" />
+            <el-option label="其他" :value="5" />
           </el-select>
           <el-input v-model="newRestriction.desc" placeholder="请输入具体忌口内容（如：花生、牛肉等）" style="width: 250px; margin: 0 10px" />
           <el-button type="primary" @click="addRestriction" :loading="loading.restriction">添加</el-button>
@@ -338,14 +338,12 @@ const goBack = () => {
 }
 
 const getRestrictionTypeLabel = (type) => {
-  // 与数据库定义保持一致: 0-不吃辣, 1-不吃香菜, 2-清真, 3-过敏, 4-素食
-  const labels = { 0: '不吃辣', 1: '不吃香菜', 2: '清真', 3: '过敏', 4: '素食' }
+  const labels = { 1: '过敏', 2: '宗教', 3: '素食', 4: '疾病', 5: '其他' }
   return labels[type] || '其他'
 }
 
 const getRestrictionTypeTag = (type) => {
-  // 标签颜色: danger-红色, warning-橙色, success-绿色, info-蓝色, ''-默认
-  const tags = { 0: 'danger', 1: 'success', 2: 'warning', 3: 'danger', 4: 'success' }
+  const tags = { 1: 'danger', 2: 'warning', 3: 'success', 4: 'info', 5: '' }
   return tags[type] || ''
 }
 
