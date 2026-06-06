@@ -210,7 +210,7 @@ public class AIRecommendServiceImpl implements AIRecommendService {
         historyResult.put("dishes", historyRecommendations);
         result.add(historyResult);
 
-        List<Dish> goalRecommendations = recommendByGoal(userId, dietGoal, 6);
+        List<Dish> goalRecommendations = recommendByGoal(userId, dietGoal, 4);
         Map<String, Object> goalResult = new HashMap<>();
         goalResult.put("type", "goal");
         String goalTitle = "目标推荐";
@@ -230,7 +230,7 @@ public class AIRecommendServiceImpl implements AIRecommendService {
         restrictionResult.put("title", "符合忌口");
         restrictionResult.put("description", "已过滤您的忌口菜品");
         restrictionResult.put("dishes", restrictionRecommendations);
-        result.add(restrictionResult);
+       result.add(restrictionResult);
 
         System.out.println("=== getCombinedRecommendations 完成 ===");
         System.out.println("推荐结果数量: " + result.size());

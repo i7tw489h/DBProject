@@ -105,7 +105,7 @@
         <div v-if="recommendations.length > 0" class="recommend-list">
           <div v-for="(group, index) in recommendations" :key="index" class="recommend-group">
             <h3>{{ group.title }}</h3>
-            <div class="recommend-dishes">
+            <div v-if="group.type !== 'restriction'" class="recommend-dishes">
               <div v-for="dish in group.dishes" :key="dish.dishId" class="recommend-dish-card">
                 <img :src="dish.imageUrl || '/images/dishes/default.jpg'" :alt="dish.name" class="dish-image" />
                 <div class="dish-info">
