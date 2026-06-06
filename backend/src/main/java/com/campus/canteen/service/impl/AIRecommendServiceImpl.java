@@ -126,10 +126,27 @@ public class AIRecommendServiceImpl implements AIRecommendService {
                 break;
             default:
                 recommendedDishes = filteredDishes.stream()
-                        .filter(d -> d.getSalesCount() != null)
-                        .sorted((d1, d2) -> d2.getSalesCount().compareTo(d1.getSalesCount()))
+                        .sorted((d1, d2) -> {
+                            if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
+                            if (d1.getSalesCount() == null) return 1;
+                            if (d2.getSalesCount() == null) return -1;
+                            return d2.getSalesCount().compareTo(d1.getSalesCount());
+                        })
                         .limit(limit)
                         .collect(Collectors.toList());
+        }
+
+        // 如果推荐结果为空，返回热门菜品作为兜底
+        if (recommendedDishes.isEmpty()) {
+            recommendedDishes = filteredDishes.stream()
+                    .sorted((d1, d2) -> {
+                        if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
+                        if (d1.getSalesCount() == null) return 1;
+                        if (d2.getSalesCount() == null) return -1;
+                        return d2.getSalesCount().compareTo(d1.getSalesCount());
+                    })
+                    .limit(limit)
+                    .collect(Collectors.toList());
         }
 
         return recommendedDishes;
@@ -158,9 +175,18 @@ public class AIRecommendServiceImpl implements AIRecommendService {
             }
         }
 
+        // 如果过滤后没有结果，返回所有可用菜品
+        if (filteredDishes.isEmpty()) {
+            filteredDishes = new ArrayList<>(dishMapper.selectAllWithNutrition());
+        }
+
         return filteredDishes.stream()
-                .filter(d -> d.getSalesCount() != null)
-                .sorted((d1, d2) -> d2.getSalesCount().compareTo(d1.getSalesCount()))
+                .sorted((d1, d2) -> {
+                    if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
+                    if (d1.getSalesCount() == null) return 1;
+                    if (d2.getSalesCount() == null) return -1;
+                    return d2.getSalesCount().compareTo(d1.getSalesCount());
+                })
                 .limit(limit)
                 .collect(Collectors.toList());
     }

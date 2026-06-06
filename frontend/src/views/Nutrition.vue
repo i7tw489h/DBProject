@@ -96,7 +96,12 @@
       </div>
 
       <div class="recommend-section">
-        <h2>🤖 AI为您推荐</h2>
+        <div class="section-header">
+          <h2>🤖 AI为您推荐</h2>
+          <el-button v-if="recommendations.length > 0" size="small" type="primary" @click="refreshRecommendations" class="refresh-btn">
+            🔄 换一换
+          </el-button>
+        </div>
         <div v-if="recommendations.length > 0" class="recommend-list">
           <div v-for="(group, index) in recommendations" :key="index" class="recommend-group">
             <h3>{{ group.title }}</h3>
@@ -398,6 +403,10 @@ const loadRecommendations = async () => {
     console.error('加载AI推荐失败:', error)
     recommendations.value = []
   }
+}
+
+const refreshRecommendations = async () => {
+  await loadRecommendations()
 }
 
 const generateMeal = async (type) => {
@@ -745,6 +754,22 @@ onMounted(async () => {
   font-size: 12px;
   color: #999;
   margin: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.refresh-btn {
+  font-size: 14px;
+  padding: 6px 16px;
 }
 
 .recommend-group h3 {
