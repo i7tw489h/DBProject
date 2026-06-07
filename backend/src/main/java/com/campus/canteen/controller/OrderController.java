@@ -1,5 +1,6 @@
 package com.campus.canteen.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.campus.canteen.common.Result;
 import com.campus.canteen.entity.Order;
 import com.campus.canteen.entity.OrderItem;
@@ -79,18 +80,40 @@ public class OrderController {
     }
 
     @GetMapping("/list")
-    public Result<?> getOrdersByUserWithStatus(@RequestParam Long userId, @RequestParam(required = false) Integer status) {
-        List<Order> orders = orderService.getOrdersByUserId(userId, status);
-        return Result.success(orders);
+    public Result<?> getOrdersByUserWithStatus(
+            @RequestParam Long userId, 
+            @RequestParam(required = false) Integer status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        if (page <= 0) page = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        
+        if (page == 1 && pageSize >= 1000) {
+            List<Order> orders = orderService.getOrdersByUserId(userId, status);
+            return Result.success(orders);
+        }
+        
+        IPage<Order> orderPage = orderService.getOrdersByUserIdWithPage(userId, status, page, pageSize);
+        return Result.success(orderPage);
     }
 
     @GetMapping("/all")
     public Result<?> getAllOrders(
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String pickupTime,
-            @RequestParam(required = false) Long windowId) {
-        List<Order> orders = orderService.getAllOrders(status, pickupTime, windowId);
-        return Result.success(orders);
+            @RequestParam(required = false) Long windowId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        if (page <= 0) page = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        
+        if (page == 1 && pageSize >= 1000) {
+            List<Order> orders = orderService.getAllOrders(status, pickupTime, windowId);
+            return Result.success(orders);
+        }
+        
+        IPage<Order> orderPage = orderService.getAllOrdersWithPage(status, pickupTime, page, pageSize);
+        return Result.success(orderPage);
     }
 
     @PutMapping("/accept/{orderId}")

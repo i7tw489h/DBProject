@@ -84,8 +84,8 @@ export const orderApi = {
   submitOrder(data) {
     return instance.post('/order/submit', data)
   },
-  getOrders(userId, status) {
-    return instance.get('/order/list', { params: { userId, status } })
+  getOrders(userId, status, page = 1, pageSize = 10) {
+    return instance.get('/order/list', { params: { userId, status, page, pageSize } })
   },
   getOrderDetail(orderId) {
     return instance.get(`/order/detail/${orderId}`)
