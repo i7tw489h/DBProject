@@ -126,10 +126,27 @@ public class AIRecommendServiceImpl implements AIRecommendService {
                 break;
             default:
                 recommendedDishes = filteredDishes.stream()
-                        .filter(d -> d.getSalesCount() != null)
-                        .sorted((d1, d2) -> d2.getSalesCount().compareTo(d1.getSalesCount()))
+                        .sorted((d1, d2) -> {
+                            if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
+                            if (d1.getSalesCount() == null) return 1;
+                            if (d2.getSalesCount() == null) return -1;
+                            return d2.getSalesCount().compareTo(d1.getSalesCount());
+                        })
                         .limit(limit)
                         .collect(Collectors.toList());
+        }
+
+        // 如果推荐结果为空，返回热门菜品作为兜底
+        if (recommendedDishes.isEmpty()) {
+            recommendedDishes = filteredDishes.stream()
+                    .sorted((d1, d2) -> {
+                        if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
+                        if (d1.getSalesCount() == null) return 1;
+                        if (d2.getSalesCount() == null) return -1;
+                        return d2.getSalesCount().compareTo(d1.getSalesCount());
+                    })
+                    .limit(limit)
+                    .collect(Collectors.toList());
         }
 
         return recommendedDishes;
@@ -158,9 +175,18 @@ public class AIRecommendServiceImpl implements AIRecommendService {
             }
         }
 
+        // 如果过滤后没有结果，返回所有可用菜品
+        if (filteredDishes.isEmpty()) {
+            filteredDishes = new ArrayList<>(dishMapper.selectAllWithNutrition());
+        }
+
         return filteredDishes.stream()
-                .filter(d -> d.getSalesCount() != null)
-                .sorted((d1, d2) -> d2.getSalesCount().compareTo(d1.getSalesCount()))
+                .sorted((d1, d2) -> {
+                    if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
+                    if (d1.getSalesCount() == null) return 1;
+                    if (d2.getSalesCount() == null) return -1;
+                    return d2.getSalesCount().compareTo(d1.getSalesCount());
+                })
                 .limit(limit)
                 .collect(Collectors.toList());
     }
@@ -184,7 +210,7 @@ public class AIRecommendServiceImpl implements AIRecommendService {
         historyResult.put("dishes", historyRecommendations);
         result.add(historyResult);
 
-        List<Dish> goalRecommendations = recommendByGoal(userId, dietGoal, 6);
+        List<Dish> goalRecommendations = recommendByGoal(userId, dietGoal, 4);
         Map<String, Object> goalResult = new HashMap<>();
         goalResult.put("type", "goal");
         String goalTitle = "目标推荐";
@@ -198,7 +224,13 @@ public class AIRecommendServiceImpl implements AIRecommendService {
         goalResult.put("dishes", goalRecommendations);
         result.add(goalResult);
 
-        // 注意：符合忌口的推荐已在前端单独展示，这里不再重复添加
+        List<Dish> restrictionRecommendations = recommendByRestrictions(userId, 4);
+        Map<String, Object> restrictionResult = new HashMap<>();
+        restrictionResult.put("type", "restriction");
+        restrictionResult.put("title", "符合忌口");
+        restrictionResult.put("description", "已过滤您的忌口菜品");
+        restrictionResult.put("dishes", restrictionRecommendations);
+       result.add(restrictionResult);
 
         System.out.println("=== getCombinedRecommendations 完成 ===");
         System.out.println("推荐结果数量: " + result.size());
