@@ -122,27 +122,18 @@
             <el-table-column label="下单时间" width="150">
               <template #default="scope">{{ formatDate(scope.row.createdAt) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="150">
+            <el-table-column label="操作" width="100">
               <template #default="scope">
                 <el-button v-if="scope.row.status === 1" size="small" type="primary" @click="acceptOrder(scope.row)">接单</el-button>
                 <el-button v-if="scope.row.status === 2" size="small" type="success" @click="serveOrder(scope.row)">出餐</el-button>
                 <el-button v-if="scope.row.status === 3" size="small" type="info" disabled>待取餐</el-button>
                 <el-button v-if="scope.row.status === 4" size="small" type="info" disabled>已完成</el-button>
                 <el-button v-if="scope.row.status === 5" size="small" type="danger" disabled>已取消</el-button>
-                <el-button v-if="scope.row.status === 4 || scope.row.status === 5" size="small" type="danger" @click="deleteOrder(scope.row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
-          
-          <div class="pagination-container" v-if="orderTotal > orderPageSize">
-            <el-pagination
-              v-model:current-page="orderCurrentPage"
-              :page-size="orderPageSize"
-              :total="orderTotal"
-              layout="prev, pager, next"
-              @current-change="handleOrderPageChange"
-            />
-          </div>
+
+
         </div>
 
         <div v-if="activeMenu === 'inventory'">
@@ -253,10 +244,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi, dishApi, orderApi } from '@/api'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
@@ -265,9 +256,6 @@ const showAddModal = ref(false)
 const orderStatus = ref('all')
 const pickupTimeFilter = ref('all')
 const windowFilter = ref('all')
-const orderCurrentPage = ref(1)
-const orderPageSize = ref(6)
-const orderTotal = ref(0)
 
 const dishList = ref([])
 const orderList = ref([])
@@ -332,10 +320,7 @@ const loadDishes = async () => {
 
 const loadOrders = async () => {
   try {
-    const params = {
-      page: orderCurrentPage.value,
-      pageSize: orderPageSize.value
-    }
+    const params = {}
     if (orderStatus.value !== 'all') {
       params.status = orderStatus.value
     }
@@ -345,25 +330,7 @@ const loadOrders = async () => {
     if (windowFilter.value !== 'all') {
       params.windowId = windowFilter.value
     }
-    
-    const result = await orderApi.getAllOrders(params)
-    
-    // 处理分页返回结果
-    if (result && typeof result === 'object') {
-      if (Array.isArray(result.records)) {
-        orderList.value = result.records
-        orderTotal.value = result.total || result.records.length
-      } else if (Array.isArray(result)) {
-        orderList.value = result
-        orderTotal.value = result.length
-      } else {
-        orderList.value = []
-        orderTotal.value = 0
-      }
-    } else {
-      orderList.value = []
-      orderTotal.value = 0
-    }
+    orderList.value = await orderApi.getAllOrders(params)
   } catch (error) {
     console.error('加载订单失败:', error)
   }
@@ -469,29 +436,6 @@ const serveOrder = async (order) => {
   }
 }
 
-const deleteOrder = async (order) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这个订单吗？删除后将无法恢复。', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    
-    await orderApi.deleteOrder(order.orderId)
-    ElMessage.success('删除成功')
-    loadOrders()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
-    }
-  }
-}
-
-const handleOrderPageChange = (page) => {
-  orderCurrentPage.value = page
-  loadOrders()
-}
-
 const goBack = () => {
   router.push('/')
 }
@@ -504,11 +448,6 @@ onMounted(() => {
   loadSalesRanking()
   loadCategories()
   loadWindows()
-})
-
-// 监听筛选条件变化，重置页码
-watch([orderStatus, pickupTimeFilter, windowFilter], () => {
-  orderCurrentPage.value = 1
 })
 </script>
 
@@ -789,11 +728,5 @@ watch([orderStatus, pickupTimeFilter, windowFilter], () => {
   font-size: 18px;
   font-weight: bold;
   color: #f56c6c;
-}
-
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
 }
 </style>

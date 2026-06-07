@@ -1,6 +1,5 @@
 package com.campus.canteen.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.campus.canteen.entity.Order;
 import com.campus.canteen.entity.OrderItem;
 
@@ -20,6 +19,4 @@ public interface OrderService {
     void saveOrder(Order order, List<java.util.Map<String, Object>> items);
     Order getOrderById(String orderId);
     void deleteOrder(String orderId);
-    IPage<Order> getOrdersByUserIdWithPage(Long userId, Integer status, int page, int pageSize);
-    IPage<Order> getAllOrdersWithPage(Integer status, String pickupTime, int page, int pageSize);
 }
