@@ -198,13 +198,7 @@ public class AIRecommendServiceImpl implements AIRecommendService {
         goalResult.put("dishes", goalRecommendations);
         result.add(goalResult);
 
-        List<Dish> restrictionRecommendations = recommendByRestrictions(userId, 4);
-        Map<String, Object> restrictionResult = new HashMap<>();
-        restrictionResult.put("type", "restriction");
-        restrictionResult.put("title", "符合忌口");
-        restrictionResult.put("description", "已过滤您的忌口菜品");
-        restrictionResult.put("dishes", restrictionRecommendations);
-        result.add(restrictionResult);
+        // 注意：符合忌口的推荐已在前端单独展示，这里不再重复添加
 
         System.out.println("=== getCombinedRecommendations 完成 ===");
         System.out.println("推荐结果数量: " + result.size());

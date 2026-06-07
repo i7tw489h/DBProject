@@ -97,6 +97,22 @@
 
       <div class="recommend-section">
         <h2>🤖 AI为您推荐</h2>
+        
+        <!-- 符合忌口 -->
+        <div v-if="restrictionDishes.length > 0" class="recommend-group">
+          <h3>符合忌口</h3>
+          <div class="recommend-dishes">
+            <div v-for="dish in restrictionDishes.slice(0, 4)" :key="dish.dishId" class="recommend-dish-card">
+              <img :src="dish.imageUrl || '/images/dishes/default.jpg'" :alt="dish.name" class="dish-image" />
+              <div class="dish-info">
+                <p class="dish-name">{{ dish.name }}</p>
+                <p class="dish-price">¥{{ dish.price }}</p>
+              </div>
+              <el-button size="small" @click="addToCart(dish)">加入购物车</el-button>
+            </div>
+          </div>
+        </div>
+        
         <div v-if="recommendations.length > 0" class="recommend-list">
           <div v-for="(group, index) in recommendations" :key="index" class="recommend-group">
             <h3>{{ group.title }}</h3>
@@ -205,6 +221,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore, useCartStore } from '@/stores'
 import { nutritionApi, aiApi, dishApi } from '@/api'
+import { restrictionApi } from '@/api'
 import * as echarts from 'echarts'
 
 const router = useRouter()
@@ -226,6 +243,7 @@ const pieChartRef = ref(null)
 const recommendations = ref([])
 const generatedMeals = ref([])
 const selectedMealType = ref('')
+const restrictionDishes = ref([])
 const mealTypes = [
   { type: 'low-calorie', name: '减脂餐', icon: '🥗' },
   { type: 'high-protein', name: '增肌餐', icon: '💪' },
@@ -397,6 +415,17 @@ const loadRecommendations = async () => {
   } catch (error) {
     console.error('加载AI推荐失败:', error)
     recommendations.value = []
+  }
+}
+
+const loadRestrictionDishes = async () => {
+  if (!userStore.user) return
+  try {
+    const res = await restrictionApi.getRecommendedDishes(userStore.user.userId)
+    restrictionDishes.value = res || []
+  } catch (error) {
+    console.error('加载符合忌口菜品失败:', error)
+    restrictionDishes.value = []
   }
 }
 
@@ -581,6 +610,7 @@ onMounted(async () => {
   await loadEvaluation()
   await loadHistory()
   await loadRecommendations()
+  await loadRestrictionDishes()
   setTimeout(() => {
     initChart()
     initPieChart()
