@@ -4,17 +4,22 @@ import com.campus.canteen.common.PageResult;
 import com.campus.canteen.common.Result;
 import com.campus.canteen.entity.Dish;
 import com.campus.canteen.entity.Nutrition;
+import com.campus.canteen.entity.Order;
 import com.campus.canteen.mapper.DishMapper;
 import com.campus.canteen.mapper.NutritionMapper;
+import com.campus.canteen.mapper.OrderMapper;
+import com.campus.canteen.mapper.UserMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -26,6 +31,12 @@ public class AdminController {
 
     @Autowired
     private NutritionMapper nutritionMapper;
+
+    @Autowired
+    private OrderMapper orderMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Autowired
     private javax.sql.DataSource dataSource;
@@ -78,22 +89,54 @@ public class AdminController {
     @GetMapping("/sales-ranking")
     public Result<?> getSalesRanking() {
         List<Dish> dishes = dishMapper.selectList(null);
-        dishes.sort((a, b) -> {
-            int sa = a.getSalesCount() != null ? a.getSalesCount() : 0;
-            int sb = b.getSalesCount() != null ? b.getSalesCount() : 0;
-            return sb - sa;
-        });
-        return Result.success(dishes.subList(0, Math.min(10, dishes.size())));
+        // 计算销售额并按销售额排序
+        List<Map<String, Object>> ranking = dishes.stream().map(dish -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("dishId", dish.getDishId());
+            item.put("name", dish.getName());
+            int salesCount = dish.getSalesCount() != null ? dish.getSalesCount() : 0;
+            BigDecimal price = dish.getPrice() != null ? dish.getPrice() : BigDecimal.ZERO;
+            BigDecimal salesAmount = price.multiply(new BigDecimal(salesCount));
+            item.put("salesCount", salesCount);
+            item.put("salesAmount", salesAmount);
+            return item;
+        }).sorted((a, b) -> {
+            BigDecimal sa = (BigDecimal) a.get("salesAmount");
+            BigDecimal sb = (BigDecimal) b.get("salesAmount");
+            return sb.compareTo(sa);
+        }).collect(Collectors.toList());
+        
+        return Result.success(ranking.subList(0, Math.min(10, ranking.size())));
     }
 
     @GetMapping("/sales-statistics")
     public Result<?> getSalesStatistics() {
         Map<String, Object> stats = new HashMap<>();
+        
+        // 统计总菜品数
         Long totalDishes = dishMapper.selectCount(null);
         stats.put("totalDishes", totalDishes);
-        stats.put("totalSales", 0);
-        stats.put("totalOrders", 0);
-        stats.put("totalUsers", 0);
+        
+        // 统计总订单数和总销售额（只统计已支付或已完成的订单）
+        List<Order> allOrders = orderMapper.selectAll();
+        BigDecimal totalSales = BigDecimal.ZERO;
+        int totalOrders = 0;
+        for (Order order : allOrders) {
+            // 只统计有效订单（已支付、已接单、已出餐、待取餐、已完成）
+            if (order.getStatus() != null && order.getStatus() >= 1 && order.getStatus() <= 4) {
+                if (order.getTotalAmount() != null) {
+                    totalSales = totalSales.add(order.getTotalAmount());
+                }
+                totalOrders++;
+            }
+        }
+        stats.put("totalSales", totalSales);
+        stats.put("totalOrders", totalOrders);
+        
+        // 统计用户总数
+        Long totalUsers = userMapper.selectCount(null);
+        stats.put("totalUsers", totalUsers);
+        
         return Result.success(stats);
     }
 

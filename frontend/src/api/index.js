@@ -125,6 +125,21 @@ export const nutritionApi = {
   }
 }
 
+export const restrictionApi = {
+  getUserRestrictions(userId) {
+    return instance.get(`/user/restrictions/${userId}`)
+  },
+  saveUserRestriction(data) {
+    return instance.post('/user/restriction', data)
+  },
+  deleteUserRestriction(restrictionId) {
+    return instance.delete(`/user/restriction/${restrictionId}`)
+  },
+  getRecommendedDishes(userId) {
+    return instance.get(`/dishes/recommend/${userId}`)
+  }
+}
+
 export const aiApi = {
   recommendDishes(userId) {
     // 添加时间戳参数防止缓存
