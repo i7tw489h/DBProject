@@ -426,6 +426,8 @@ const loadRecommendations = async () => {
 
 const refreshRecommendations = async () => {
   await loadRecommendations()
+}
+
 const loadRestrictionDishes = async () => {
   if (!userStore.user) return
   try {

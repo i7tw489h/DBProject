@@ -44,15 +44,86 @@ public class AdminController {
     @GetMapping("/dishes")
     public Result<?> getDishList(
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long windowId,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
+        
         Page<Dish> page = new Page<>(pageNum, pageSize);
-        IPage<Dish> result = dishMapper.selectPage(page, null);
-        PageResult<Dish> pageResult = new PageResult<Dish>(result.getTotal(), result.getRecords(), pageNum.longValue(), pageSize.longValue());
+        
+        LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.like(Dish::getName, keyword);
+        }
+        if (categoryId != null) {
+            queryWrapper.eq(Dish::getCategoryId, categoryId);
+        }
+        if (windowId != null) {
+            queryWrapper.eq(Dish::getWindowId, windowId);
+        }
+        if (isActive != null) {
+            queryWrapper.eq(Dish::getIsShelf, isActive ? 1 : 0);
+        }
+        
+        if (sortField != null && !sortField.isEmpty()) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            if ("dishId".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getDishId);
+            } else if ("price".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getPrice);
+            } else if ("stock".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getStock);
+            } else if ("salesCount".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getSalesCount);
+            }
+        } else {
+            queryWrapper.orderByAsc(Dish::getDishId);
+        }
+        
+        IPage<Dish> result = dishMapper.selectPage(page, queryWrapper);
+        
+        List<Map<String, Object>> dishList = result.getRecords().stream().map(dish -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("dishId", dish.getDishId());
+            map.put("name", dish.getName());
+            map.put("price", dish.getPrice());
+            map.put("imageUrl", dish.getImageUrl());
+            map.put("description", dish.getDescription());
+            map.put("ingredients", dish.getIngredients());
+            map.put("categoryId", dish.getCategoryId());
+            map.put("categoryName", getCategoryName(dish.getCategoryId()));
+            map.put("windowId", dish.getWindowId());
+            map.put("windowName", getWindowName(dish.getWindowId()));
+            map.put("stock", dish.getStock());
+            map.put("isActive", dish.getIsShelf() != null && dish.getIsShelf() == 1);
+            map.put("salesCount", dish.getSalesCount());
+            return map;
+        }).collect(Collectors.toList());
+        
+        PageResult<Map<String, Object>> pageResult = new PageResult<>(result.getTotal(), dishList, pageNum.longValue(), pageSize.longValue());
         return Result.success(pageResult);
+    }
+    
+    private String getCategoryName(Long categoryId) {
+        if (categoryId == null) return "";
+        return dishMapper.getCategoryName(categoryId);
+    }
+    
+    private String getWindowName(Long windowId) {
+        if (windowId == null) return "";
+        return dishMapper.getWindowName(windowId);
     }
 
     @PostMapping("/dishes")
     public Result<?> addDish(@RequestBody Dish dish) {
+        Long maxId = dishMapper.selectMaxId();
+        Long newId = (maxId == null) ? 1L : maxId + 1;
+        dish.setDishId(newId);
+        
         dishMapper.insert(dish);
         
         Nutrition nutrition = new Nutrition();
@@ -84,6 +155,42 @@ public class AdminController {
             return Result.success("操作成功");
         }
         return Result.error("菜品不存在");
+    }
+    
+    @PutMapping("/dishes/batch/status")
+    public Result<?> batchToggleStatus(@RequestBody Map<String, Object> params) {
+        List<Long> ids = (List<Long>) params.get("ids");
+        Boolean isActive = (Boolean) params.get("isActive");
+        
+        if (ids == null || ids.isEmpty()) {
+            return Result.error("请选择要操作的菜品");
+        }
+        
+        for (Long id : ids) {
+            Dish dish = dishMapper.selectById(id);
+            if (dish != null) {
+                dish.setIsShelf(isActive ? 1 : 0);
+                dishMapper.updateById(dish);
+            }
+        }
+        
+        return Result.success("批量操作成功");
+    }
+    
+    @DeleteMapping("/dishes/batch")
+    public Result<?> batchDeleteDishes(@RequestBody Map<String, Object> params) {
+        List<Long> ids = (List<Long>) params.get("ids");
+        
+        if (ids == null || ids.isEmpty()) {
+            return Result.error("请选择要删除的菜品");
+        }
+        
+        for (Long id : ids) {
+            nutritionMapper.delete(new LambdaQueryWrapper<Nutrition>().eq(Nutrition::getDishId, id));
+            dishMapper.deleteById(id);
+        }
+        
+        return Result.success("批量删除成功");
     }
 
     @GetMapping("/sales-ranking")
