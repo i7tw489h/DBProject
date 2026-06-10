@@ -59,4 +59,13 @@ public interface DishMapper extends BaseMapper<Dish> {
 
     @Select("SELECT n.* FROM nutrition n WHERE n.dish_id = #{dishId}")
     Nutrition selectNutritionByDishId(Long dishId);
+
+    @Select("SELECT name FROM categories WHERE category_id = #{categoryId}")
+    String getCategoryName(Long categoryId);
+
+    @Select("SELECT name FROM windows WHERE window_id = #{windowId}")
+    String getWindowName(Long windowId);
+    
+    @Select("SELECT MAX(dish_id) FROM dishes")
+    Long selectMaxId();
 }

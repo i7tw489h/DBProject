@@ -167,7 +167,13 @@ export const adminApi = {
     return instance.delete(`/admin/dishes/${id}`)
   },
   toggleDishStatus(id) {
-    return instance.put('/admin/dishes/status/${id}')
+    return instance.put(`/admin/dishes/status/${id}`)
+  },
+  batchToggleStatus(ids, isActive) {
+    return instance.put('/admin/dishes/batch/status', { ids, isActive })
+  },
+  batchDeleteDishes(ids) {
+    return instance.delete('/admin/dishes/batch', { data: { ids } })
   },
   getSalesRanking() {
     return instance.get('/admin/sales-ranking')
