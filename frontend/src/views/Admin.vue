@@ -17,6 +17,7 @@
           <el-menu-item index="orders" @click="activeMenu = 'orders'">📋 订单管理</el-menu-item>
           <el-menu-item index="inventory" @click="activeMenu = 'inventory'">📦 库存管理</el-menu-item>
           <el-menu-item index="statistics" @click="activeMenu = 'statistics'">📊 数据统计</el-menu-item>
+          <el-menu-item index="prediction" @click="activeMenu = 'prediction'">🤖 AI销量预测</el-menu-item>
         </el-menu>
       </aside>
 
@@ -330,6 +331,150 @@
             </el-table>
           </div>
         </div>
+
+        <!-- AI销量预测 -->
+        <div v-if="activeMenu === 'prediction'">
+          <div class="section-header">
+            <h2>🤖 AI销量预测</h2>
+            <div class="prediction-actions">
+              <span class="prediction-date-info">📅 预测日期：明天（{{ getTomorrowDate() }}）</span>
+              <el-button type="primary" @click="generatePrediction" :loading="predictionLoading">
+                生成预测
+              </el-button>
+              <el-button type="success" @click="getSuggestions">
+                获取备餐建议
+              </el-button>
+            </div>
+          </div>
+
+          <!-- 预测统计卡片 -->
+          <div class="stats-grid">
+            <div class="stats-card">
+              <span class="stats-icon">🎯</span>
+              <p class="stats-value">{{ predictionStats.accuracyRate || 0 }}%</p>
+              <p class="stats-label">预测准确率</p>
+            </div>
+            <div class="stats-card">
+              <span class="stats-icon">📊</span>
+              <p class="stats-value">{{ predictionStats.totalPredictions || 0 }}</p>
+              <p class="stats-label">总预测数</p>
+            </div>
+            <div class="stats-card">
+              <span class="stats-icon">⚠️</span>
+              <p class="stats-value">{{ predictionStats.averageError || 0 }}</p>
+              <p class="stats-label">平均误差</p>
+            </div>
+            <div class="stats-card">
+              <span class="stats-icon">✅</span>
+              <p class="stats-value">{{ predictionStats.evaluatedPredictions || 0 }}</p>
+              <p class="stats-label">已评估</p>
+            </div>
+          </div>
+
+          <!-- 预测结果表格 -->
+          <div class="prediction-section">
+            <h3>📈 预测结果</h3>
+            <el-alert
+              v-if="predictionDate"
+              :title="'预测日期: ' + predictionDate + ' (' + getWeekday(predictionDate) + ')'"
+              type="info"
+              :closable="false"
+              style="margin-bottom: 15px;"
+            ></el-alert>
+            <el-table :data="predictionList" border class="prediction-table" v-loading="predictionLoading">
+              <el-table-column label="排名" width="80">
+                <template #default="scope">
+                  <span v-if="scope.$index === 0" class="rank gold">🥇</span>
+                  <span v-else-if="scope.$index === 1" class="rank silver">🥈</span>
+                  <span v-else-if="scope.$index === 2" class="rank bronze">🥉</span>
+                  <span v-else>{{ scope.$index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="dishName" label="菜品名称"></el-table-column>
+              <el-table-column prop="price" label="价格">
+                <template #default="scope">¥{{ scope.row.price }}</template>
+              </el-table-column>
+              <el-table-column prop="predictedSales" label="预测销量">
+                <template #default="scope">
+                  <el-tag type="primary">{{ scope.row.predictedSales }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="confidence" label="置信度">
+                <template #default="scope">
+                  <el-progress 
+                    :percentage="(scope.row.confidence * 100).toFixed(0)" 
+                    :status="getConfidenceStatus(scope.row.confidence)"
+                  ></el-progress>
+                </template>
+              </el-table-column>
+              <el-table-column prop="actualSales" label="实际销量">
+                <template #default="scope">
+                  <span v-if="scope.row.actualSales">{{ scope.row.actualSales }}</span>
+                  <span v-else class="text-muted">-</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 备餐建议 -->
+          <div class="suggestions-section" v-if="suggestions.length > 0">
+            <h3>🍽️ 备餐建议</h3>
+            <el-alert
+              title="基于AI预测生成的建议，帮助您合理备餐，减少浪费"
+              type="success"
+              :closable="false"
+              style="margin-bottom: 15px;"
+            ></el-alert>
+            <el-table :data="suggestions" border class="suggestions-table">
+              <el-table-column prop="dishName" label="菜品名称"></el-table-column>
+              <el-table-column prop="minQuantity" label="最低备餐量">
+                <template #default="scope">
+                  <el-tag type="warning">{{ scope.row.minQuantity }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="recommendedQuantity" label="建议备餐量">
+                <template #default="scope">
+                  <el-tag type="success" size="large">{{ scope.row.recommendedQuantity }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="maxQuantity" label="最大备餐量">
+                <template #default="scope">
+                  <el-tag type="info">{{ scope.row.maxQuantity }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="priority" label="优先级">
+                <template #default="scope">
+                  <el-tag :type="scope.row.priority === 'high' ? 'danger' : scope.row.priority === 'medium' ? 'warning' : 'info'">
+                    {{ scope.row.priority === 'high' ? '高' : scope.row.priority === 'medium' ? '中' : '低' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="confidence" label="置信度">
+                <template #default="scope">
+                  <span>{{ (scope.row.confidence * 100).toFixed(0) }}%</span>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="summary-section">
+              <h4>📋 备餐汇总</h4>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <span class="summary-label">总菜品数:</span>
+                  <span class="summary-value">{{ suggestions.length }}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">建议总份数:</span>
+                  <span class="summary-value highlight">{{ totalRecommendedQuantity }}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">预计销售额:</span>
+                  <span class="summary-value highlight">¥{{ estimatedSales }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -383,14 +528,97 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, dishApi, orderApi } from '@/api'
+import { adminApi, dishApi, orderApi, predictionApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 
 const activeMenu = ref('dishes')
+
+// AI销量预测相关数据
+const predictionList = ref([])
+const predictionStats = ref({})
+const suggestions = ref([])
+const predictionLoading = ref(false)
+
+// 计算属性
+const totalRecommendedQuantity = computed(() => {
+  return suggestions.value.reduce((sum, item) => sum + item.recommendedQuantity, 0)
+})
+
+const estimatedSales = computed(() => {
+  return suggestions.value.reduce((sum, item) => {
+    const price = item.price || 0
+    return sum + (item.recommendedQuantity * price)
+  }, 0).toFixed(2)
+})
+
+// AI销量预测方法
+
+const generatePrediction = async () => {
+  predictionLoading.value = true
+  try {
+    // 使用明天的日期
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const targetDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+    
+    const result = await predictionApi.predictSales(targetDate)
+    predictionList.value = result
+    ElMessage.success('预测生成成功')
+  } catch (error) {
+    console.error('生成预测失败:', error)
+    ElMessage.error('生成预测失败：' + (error.response?.data?.message || error.message))
+  } finally {
+    predictionLoading.value = false
+  }
+}
+
+const getSuggestions = async () => {
+  predictionLoading.value = true
+  try {
+    // 使用明天的日期
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const targetDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+    
+    // 先确保有预测数据
+    await predictionApi.predictSales(targetDate)
+    // 然后获取备餐建议
+    suggestions.value = await predictionApi.getSuggestions()
+    ElMessage.success('备餐建议生成成功')
+  } catch (error) {
+    console.error('获取备餐建议失败:', error)
+    ElMessage.error('获取备餐建议失败：' + (error.response?.data?.message || error.message))
+  } finally {
+    predictionLoading.value = false
+  }
+}
+
+const getWeekday = (dateStr) => {
+  const date = new Date(dateStr)
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+  return weekdays[date.getDay()]
+}
+
+const getTomorrowDate = () => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const year = tomorrow.getFullYear()
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
+  const day = String(tomorrow.getDate()).padStart(2, '0')
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return `${year}-${month}-${day}（${weekdays[tomorrow.getDay()]}）`
+}
+
+const getConfidenceStatus = (confidence) => {
+  if (confidence >= 0.8) return 'success'
+  if (confidence >= 0.6) return 'warning'
+  return 'exception'
+}
+
 const showAddModal = ref(false)
 const orderStatus = ref('all')
 const pickupTimeFilter = ref('all')
@@ -1186,6 +1414,122 @@ watch([orderStatus, pickupTimeFilter, windowFilter], () => {
 }
 
 .total-text {
+  color: #666;
+  font-size: 14px;
+}
+
+/* AI销量预测样式 */
+.prediction-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prediction-section {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.prediction-section h3 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.prediction-table {
+  margin-top: 15px;
+}
+
+.suggestions-section {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.suggestions-section h3 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.suggestions-table {
+  margin-top: 15px;
+}
+
+.summary-section {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.summary-section h4 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: white;
+  border-radius: 5px;
+}
+
+.summary-label {
+  color: #666;
+}
+
+.summary-value {
+  font-weight: bold;
+  color: #333;
+}
+
+.summary-value.highlight {
+  color: #409eff;
+  font-size: 18px;
+}
+
+.text-muted {
+  color: #999;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stats-card {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.stats-icon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.stats-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #409eff;
+  margin: 10px 0;
+}
+
+.stats-label {
   color: #666;
   font-size: 14px;
 }
