@@ -58,11 +58,22 @@
           <div class="order-actions">
             <el-button v-if="order.status === 3" type="primary" size="small" @click="finishOrder(order.orderId)">去取餐</el-button>
             <el-button v-if="order.status === 1 || order.status === 2" type="danger" size="small" @click="cancelOrder(order.orderId)">取消订单</el-button>
+            <el-button v-if="order.status === 4 || order.status === 5" type="danger" size="small" @click="deleteOrder(order.orderId)">删除订单</el-button>
           </div>
         </div>
       </div>
 
-      <div class="empty-state" v-else>
+      <div class="pagination-container" v-if="totalOrders > pageSize">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="totalOrders"
+          layout="prev, pager, next"
+          @current-change="handlePageChange"
+        />
+      </div>
+
+      <div class="empty-state" v-else-if="orders.length === 0">
         <span class="empty-icon">📋</span>
         <p>暂无订单</p>
       </div>
@@ -71,17 +82,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { orderApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const activeTab = ref('all')
 const orders = ref([])
+const currentPage = ref(1)
+const pageSize = ref(6)
+const totalOrders = ref(0)
 
 const statusMap = {
   0: '待支付',
@@ -134,7 +148,29 @@ const loadOrders = async () => {
   }
   
   try {
-    orders.value = await orderApi.getOrders(userStore.user.userId, status)
+    const result = await orderApi.getOrders(
+      userStore.user.userId, 
+      status, 
+      currentPage.value, 
+      pageSize.value
+    )
+    
+    // 处理分页返回结果
+    if (result && typeof result === 'object') {
+      if (Array.isArray(result.records)) {
+        orders.value = result.records
+        totalOrders.value = result.total || result.records.length
+      } else if (Array.isArray(result)) {
+        orders.value = result
+        totalOrders.value = result.length
+      } else {
+        orders.value = []
+        totalOrders.value = 0
+      }
+    } else {
+      orders.value = []
+      totalOrders.value = 0
+    }
   } catch (error) {
     console.error('加载订单失败:', error)
   }
@@ -160,12 +196,40 @@ const finishOrder = async (orderId) => {
   }
 }
 
+const deleteOrder = async (orderId) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个订单吗？删除后将无法恢复。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await orderApi.deleteOrder(orderId)
+    ElMessage.success('删除成功')
+    loadOrders()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadOrders()
+}
+
 const goBack = () => {
   router.push('/')
 }
 
 onMounted(() => {
   loadOrders()
+})
+
+// 监听标签切换，重置页码
+watch(activeTab, () => {
+  currentPage.value = 1
 })
 </script>
 
@@ -367,5 +431,15 @@ onMounted(() => {
   font-size: 80px;
   display: block;
   margin-bottom: 20px;
+}
+
+.pagination-container {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 </style>
