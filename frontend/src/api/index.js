@@ -188,3 +188,37 @@ export const adminApi = {
     return instance.get('/admin/preferences')
   }
 }
+
+// AI销量预测API
+export const predictionApi = {
+  // 预测指定日期的销量
+  predictSales(targetDate) {
+    return instance.get('/admin/prediction/predict', { 
+      params: { targetDate } 
+    })
+  },
+  // 获取明天预测结果
+  getTomorrowPrediction() {
+    return instance.get('/admin/prediction/tomorrow')
+  },
+  // 获取预测历史
+  getPredictionHistory(days = 7) {
+    return instance.get('/admin/prediction/history', { 
+      params: { days } 
+    })
+  },
+  // 获取预测统计数据
+  getStatistics() {
+    return instance.get('/admin/prediction/statistics')
+  },
+  // 获取备餐建议
+  getSuggestions() {
+    return instance.get('/admin/prediction/suggestions')
+  },
+  // 更新实际销量
+  updateActualSales(predictDate) {
+    return instance.post('/admin/prediction/update-actual', null, {
+      params: { predictDate }
+    })
+  }
+}
