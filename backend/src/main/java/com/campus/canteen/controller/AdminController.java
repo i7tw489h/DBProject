@@ -1,5 +1,7 @@
 package com.campus.canteen.controller;
 
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
 import com.campus.canteen.common.PageResult;
 import com.campus.canteen.common.Result;
 import com.campus.canteen.entity.Dish;
@@ -15,7 +17,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -245,6 +252,90 @@ public class AdminController {
         stats.put("totalUsers", totalUsers);
         
         return Result.success(stats);
+    }
+
+    @GetMapping("/dishes/export")
+    public void exportDishesExcel(HttpServletResponse response,
+                                   @RequestParam(required = false) String keyword,
+                                   @RequestParam(required = false) Long categoryId,
+                                   @RequestParam(required = false) Long windowId,
+                                   @RequestParam(required = false) Boolean isActive,
+                                   @RequestParam(required = false) String sortField,
+                                   @RequestParam(required = false, defaultValue = "desc") String sortOrder) throws IOException {
+        
+        // 构建查询条件
+        LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.like(Dish::getName, keyword);
+        }
+        if (categoryId != null) {
+            queryWrapper.eq(Dish::getCategoryId, categoryId);
+        }
+        if (windowId != null) {
+            queryWrapper.eq(Dish::getWindowId, windowId);
+        }
+        if (isActive != null) {
+            queryWrapper.eq(Dish::getIsShelf, isActive ? 1 : 0);
+        }
+        
+        if (sortField != null && !sortField.isEmpty()) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            if ("dishId".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getDishId);
+            } else if ("price".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getPrice);
+            } else if ("stock".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getStock);
+            } else if ("salesCount".equals(sortField)) {
+                queryWrapper.orderBy(true, isAsc, Dish::getSalesCount);
+            }
+        } else {
+            queryWrapper.orderByAsc(Dish::getDishId);
+        }
+        
+        // 查询所有符合条件的菜品
+        List<Dish> dishes = dishMapper.selectList(queryWrapper);
+        
+        // 创建包含表头和数据的完整列表
+        List<List<Object>> allData = new ArrayList<>();
+        
+        // 添加表头作为第一行
+        allData.add(java.util.Arrays.asList("ID", "菜品名称", "价格", "分类", "窗口", "库存", "销量", "状态", "描述", "食材"));
+        
+        // 添加数据行
+        for (Dish dish : dishes) {
+            List<Object> row = new ArrayList<>();
+            row.add(String.valueOf(dish.getDishId()));  // 转为字符串，避免Excel列宽问题
+            row.add(dish.getName());
+            row.add(dish.getPrice());
+            row.add(getCategoryName(dish.getCategoryId()));
+            row.add(getWindowName(dish.getWindowId()));
+            row.add(dish.getStock());
+            row.add(dish.getSalesCount());
+            row.add(dish.getIsShelf() != null && dish.getIsShelf() == 1 ? "上架" : "下架");
+            row.add(dish.getDescription());
+            row.add(dish.getIngredients());
+            allData.add(row);
+        }
+        
+        // 设置响应头
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("utf-8");
+        String fileName = URLEncoder.encode("菜品列表", StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+        response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+        
+        // 使用 EasyExcel 导出
+        EasyExcel.write(response.getOutputStream())
+            .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
+            .sheet("菜品列表")
+            .doWrite(allData);
+    }
+    
+    private List<List<String>> createExcelHeader() {
+        List<List<String>> header = new ArrayList<>();
+        header.add(java.util.Arrays.asList("ID", "菜品名称", "价格", "分类", "窗口", "库存", "销量", "状态", "描述", "食材"));
+        return header;
     }
 
     @GetMapping("/low-stock")

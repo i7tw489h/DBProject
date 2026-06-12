@@ -25,7 +25,10 @@
         <div v-if="activeMenu === 'dishes'" class="page-container">
           <div class="section-header">
             <h2>🍳 菜品管理</h2>
-            <el-button type="primary" @click="showAddModal = true">添加菜品</el-button>
+            <div class="header-actions">
+              <el-button type="success" @click="exportDishExcel">导出Excel</el-button>
+              <el-button type="primary" @click="showAddModal = true">添加菜品</el-button>
+            </div>
           </div>
           
           <div class="filter-bar">
@@ -695,6 +698,43 @@ const formatDate = (dateStr) => {
   })
 }
 
+// 导出菜品 Excel
+const exportDishExcel = async () => {
+  try {
+    const params = {}
+    
+    if (searchKeyword.value) {
+      params.keyword = searchKeyword.value
+    }
+    if (filterCategory.value) {
+      params.categoryId = filterCategory.value
+    }
+    if (filterWindow.value) {
+      params.windowId = filterWindow.value
+    }
+    if (filterStatus.value !== '') {
+      params.isActive = filterStatus.value
+    }
+    if (sortField.value) {
+      params.sortField = sortField.value
+      params.sortOrder = sortOrder.value
+    } else {
+      params.sortField = 'dishId'
+      params.sortOrder = 'asc'
+    }
+    
+    // 直接使用 window.open 触发下载
+    const queryParams = new URLSearchParams(params).toString()
+    const url = `/api/admin/dishes/export${queryParams ? '?' + queryParams : ''}`
+    window.open(url, '_blank')
+    
+    ElMessage.success('导出成功，请查看下载文件')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败：' + (error.message || '未知错误'))
+  }
+}
+
 const loadDishes = async () => {
   try {
     const params = {
@@ -1065,6 +1105,11 @@ watch([orderStatus, pickupTimeFilter, windowFilter], () => {
 
 .section-header h2 {
   color: #333;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .filter-group {

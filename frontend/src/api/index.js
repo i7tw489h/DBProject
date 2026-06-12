@@ -186,6 +186,13 @@ export const adminApi = {
   },
   getStudentPreferences() {
     return instance.get('/admin/preferences')
+  },
+  // 导出菜品 Excel
+  exportDishesExcel(params) {
+    return instance.get('/admin/dishes/export', { 
+      params,
+      responseType: 'blob'
+    })
   }
 }
 
