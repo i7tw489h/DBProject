@@ -50,39 +50,29 @@ public class AIRecommendServiceImpl implements AIRecommendService {
             }
         }
 
-        List<Long> sortedDishIds = dishCountMap.entrySet().stream()
-                .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
-                .limit(limit * 2)
-                .map(Map.Entry::getKey)
+        List<Dish> allDishes = dishMapper.selectAllWithNutrition();
+        
+        // 使用存储函数计算每道菜的推荐分数并排序
+        List<Dish> scoredDishes = new ArrayList<>();
+        for (Dish dish : allDishes) {
+            int orderCount = dishCountMap.getOrDefault(dish.getDishId(), 0);
+            int salesCount = dish.getSalesCount() != null ? dish.getSalesCount() : 0;
+            
+            // 调用存储函数计算推荐分数
+            BigDecimal score = dishMapper.calculateRecommendScore(0, 0, orderCount, salesCount);
+            // 将分数存储到菜品的扩展字段中（或使用自定义对象）
+            dish.setRecommendScore(score != null ? score.doubleValue() : 0);
+            scoredDishes.add(dish);
+        }
+
+        // 按推荐分数排序
+        scoredDishes.sort((d1, d2) -> Double.compare(d2.getRecommendScore(), d1.getRecommendScore()));
+
+        List<Dish> recommendedDishes = scoredDishes.stream()
+                .limit(limit)
                 .collect(Collectors.toList());
 
-        List<Dish> allDishes = dishMapper.selectAllWithNutrition();
-        List<Dish> recommendedDishes = new ArrayList<>();
-        // 视图v_dish_nutrition已经过滤了上架菜品
-        for (Long dishId : sortedDishIds) {
-            for (Dish dish : allDishes) {
-                if (dish.getDishId().equals(dishId)) {
-                    recommendedDishes.add(dish);
-                    break;
-                }
-            }
-        }
-
-        if (recommendedDishes.size() < limit) {
-            List<Dish> popularDishes = allDishes.stream()
-                    .filter(d -> d.getSalesCount() != null)
-                    .sorted((d1, d2) -> d2.getSalesCount().compareTo(d1.getSalesCount()))
-                    .limit(limit)
-                    .collect(Collectors.toList());
-
-            for (Dish dish : popularDishes) {
-                if (!recommendedDishes.contains(dish) && recommendedDishes.size() < limit) {
-                    recommendedDishes.add(dish);
-                }
-            }
-        }
-
-        return recommendedDishes.stream().limit(limit).collect(Collectors.toList());
+        return recommendedDishes;
     }
 
     @Override
@@ -93,27 +83,52 @@ public class AIRecommendServiceImpl implements AIRecommendService {
 
         List<Dish> recommendedDishes = new ArrayList<>();
 
+        // 使用存储函数获取营养等级，筛选"优秀"和"良好"的菜品
         switch (dietGoal) {
-            case 1:
+            case 1: // 减脂
                 recommendedDishes = filteredDishes.stream()
-                        .filter(d -> d.getCalories() != null && d.getCalories().compareTo(new BigDecimal("300")) <= 0)
-                        .sorted((d1, d2) -> d1.getCalories().compareTo(d2.getCalories()))
+                        .filter(d -> {
+                            if (d.getCalories() == null || d.getFat() == null) return false;
+                            String level = dishMapper.getNutritionLevel(d.getCalories(), d.getProtein(), d.getFat(), 1);
+                            return "优秀".equals(level) || "良好".equals(level);
+                        })
+                        .sorted((d1, d2) -> {
+                            if (d1.getCalories() == null && d2.getCalories() == null) return 0;
+                            if (d1.getCalories() == null) return 1;
+                            if (d2.getCalories() == null) return -1;
+                            return d1.getCalories().compareTo(d2.getCalories());
+                        })
                         .limit(limit)
                         .collect(Collectors.toList());
                 break;
-            case 2:
+            case 2: // 增肌
                 recommendedDishes = filteredDishes.stream()
-                        .filter(d -> d.getProtein() != null && d.getProtein().compareTo(new BigDecimal("15")) >= 0)
-                        .sorted((d1, d2) -> d2.getProtein().compareTo(d1.getProtein()))
+                        .filter(d -> {
+                            if (d.getCalories() == null || d.getFat() == null) return false;
+                            String level = dishMapper.getNutritionLevel(d.getCalories(), d.getProtein(), d.getFat(), 2);
+                            return "优秀".equals(level) || "良好".equals(level);
+                        })
+                        .sorted((d1, d2) -> {
+                            if (d1.getProtein() == null && d2.getProtein() == null) return 0;
+                            if (d1.getProtein() == null) return 1;
+                            if (d2.getProtein() == null) return -1;
+                            return d2.getProtein().compareTo(d1.getProtein());
+                        })
                         .limit(limit)
                         .collect(Collectors.toList());
                 break;
-            case 3:
+            case 3: // 清淡养胃
                 recommendedDishes = filteredDishes.stream()
                         .filter(d -> {
                             if (d.getName() == null) return true;
                             String name = d.getName().toLowerCase();
-                            return !name.contains("辣") && !name.contains("麻") && !name.contains("椒");
+                            boolean isLight = !name.contains("辣") && !name.contains("麻") && !name.contains("椒");
+                            if (!isLight) return false;
+                            if (d.getCalories() != null && d.getFat() != null) {
+                                String level = dishMapper.getNutritionLevel(d.getCalories(), d.getProtein(), d.getFat(), 3);
+                                return "优秀".equals(level) || "良好".equals(level);
+                            }
+                            return true;
                         })
                         .sorted((d1, d2) -> {
                             if (d1.getFat() == null && d2.getFat() == null) return 0;
@@ -124,8 +139,13 @@ public class AIRecommendServiceImpl implements AIRecommendService {
                         .limit(limit)
                         .collect(Collectors.toList());
                 break;
-            default:
+            default: // 均衡
                 recommendedDishes = filteredDishes.stream()
+                        .filter(d -> {
+                            if (d.getCalories() == null || d.getFat() == null) return false;
+                            String level = dishMapper.getNutritionLevel(d.getCalories(), d.getProtein(), d.getFat(), 3);
+                            return "优秀".equals(level) || "良好".equals(level);
+                        })
                         .sorted((d1, d2) -> {
                             if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
                             if (d1.getSalesCount() == null) return 1;
@@ -147,6 +167,14 @@ public class AIRecommendServiceImpl implements AIRecommendService {
                     })
                     .limit(limit)
                     .collect(Collectors.toList());
+        }
+
+        // 为推荐菜品设置营养等级
+        for (Dish dish : recommendedDishes) {
+            if (dish.getCalories() != null && dish.getFat() != null) {
+                String level = dishMapper.getNutritionLevel(dish.getCalories(), dish.getProtein(), dish.getFat(), dietGoal);
+                dish.setNutritionLevel(level);
+            }
         }
 
         return recommendedDishes;
@@ -180,7 +208,7 @@ public class AIRecommendServiceImpl implements AIRecommendService {
             filteredDishes = new ArrayList<>(dishMapper.selectAllWithNutrition());
         }
 
-        return filteredDishes.stream()
+        List<Dish> result = filteredDishes.stream()
                 .sorted((d1, d2) -> {
                     if (d1.getSalesCount() == null && d2.getSalesCount() == null) return 0;
                     if (d1.getSalesCount() == null) return 1;
@@ -189,6 +217,20 @@ public class AIRecommendServiceImpl implements AIRecommendService {
                 })
                 .limit(limit)
                 .collect(Collectors.toList());
+
+        // 为推荐菜品设置推荐分数和营养等级
+        for (Dish dish : result) {
+            int salesCount = dish.getSalesCount() != null ? dish.getSalesCount() : 0;
+            BigDecimal score = dishMapper.calculateRecommendScore(0, 0, 0, salesCount);
+            dish.setRecommendScore(score != null ? score.doubleValue() : 0);
+            
+            if (dish.getCalories() != null && dish.getFat() != null) {
+                String level = dishMapper.getNutritionLevel(dish.getCalories(), dish.getProtein(), dish.getFat(), 3);
+                dish.setNutritionLevel(level);
+            }
+        }
+
+        return result;
     }
 
     @Override

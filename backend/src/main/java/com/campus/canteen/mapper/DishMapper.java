@@ -68,4 +68,36 @@ public interface DishMapper extends BaseMapper<Dish> {
     
     @Select("SELECT MAX(dish_id) FROM dishes")
     Long selectMaxId();
+
+    /**
+     * 调用存储函数计算菜品推荐分数
+     * @param favoriteCount 收藏数
+     * @param browseCount 浏览数
+     * @param orderCount 订单数
+     * @param salesCount 销量
+     * @return 推荐分数
+     */
+    @Select("SELECT fn_calculate_recommend_score(#{favoriteCount}, #{browseCount}, #{orderCount}, #{salesCount})")
+    java.math.BigDecimal calculateRecommendScore(
+            @org.apache.ibatis.annotations.Param("favoriteCount") Integer favoriteCount,
+            @org.apache.ibatis.annotations.Param("browseCount") Integer browseCount,
+            @org.apache.ibatis.annotations.Param("orderCount") Integer orderCount,
+            @org.apache.ibatis.annotations.Param("salesCount") Integer salesCount
+    );
+
+    /**
+     * 调用存储函数获取菜品营养等级
+     * @param calories 卡路里
+     * @param protein 蛋白质(g)
+     * @param fat 脂肪(g)
+     * @param goal 用户目标(1-减脂, 2-增肌, 3-均衡)
+     * @return 营养等级(优秀/良好/一般/不合适)
+     */
+    @Select("SELECT fn_get_nutrition_level(#{calories}, #{protein}, #{fat}, #{goal})")
+    String getNutritionLevel(
+            @org.apache.ibatis.annotations.Param("calories") java.math.BigDecimal calories,
+            @org.apache.ibatis.annotations.Param("protein") java.math.BigDecimal protein,
+            @org.apache.ibatis.annotations.Param("fat") java.math.BigDecimal fat,
+            @org.apache.ibatis.annotations.Param("goal") Integer goal
+    );
 }

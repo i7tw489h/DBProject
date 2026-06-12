@@ -820,6 +820,79 @@ END //
 DELIMITER ;
 
 -- =============================================
+-- 存储函数定义
+-- =============================================
+
+-- 存储函数1: 计算菜品推荐分数
+-- 参数: favorite_count-收藏数, browse_count-浏览数, order_count-订单数, sales_count-总销量
+-- 返回: 推荐分数(0-100)
+DELIMITER //
+CREATE FUNCTION fn_calculate_recommend_score(
+    p_favorite_count INT,
+    p_browse_count INT,
+    p_order_count INT,
+    p_sales_count INT
+) RETURNS DECIMAL(5,2)
+DETERMINISTIC
+BEGIN
+    RETURN ROUND(
+        LEAST(p_favorite_count * 5, 30) + 
+        LEAST(p_browse_count * 2, 20) + 
+        LEAST(p_order_count * 3, 30) + 
+        LEAST(p_sales_count * 0.1, 20), 
+        2
+    );
+END //
+DELIMITER ;
+
+-- 存储函数2: 获取菜品营养等级
+-- 参数: calories-卡路里, protein-蛋白质(g), fat-脂肪(g), goal-用户目标(1-减脂, 2-增肌, 3-均衡)
+-- 返回: 营养等级(优秀/良好/一般/不合适)
+DELIMITER //
+CREATE FUNCTION fn_get_nutrition_level(
+    p_calories DECIMAL(8,2),
+    p_protein DECIMAL(8,2),
+    p_fat DECIMAL(8,2),
+    p_goal INT
+) RETURNS VARCHAR(20)
+DETERMINISTIC
+BEGIN
+    -- 减脂目标: 低热量、低脂肪
+    IF p_goal = 1 THEN
+        IF p_calories < 250 AND p_fat < 10 THEN
+            RETURN '优秀';
+        ELSEIF p_calories < 350 AND p_fat < 18 THEN
+            RETURN '良好';
+        ELSEIF p_calories < 450 THEN
+            RETURN '一般';
+        ELSE
+            RETURN '不合适';
+        END IF;
+    -- 增肌目标: 高蛋白
+    ELSEIF p_goal = 2 THEN
+        IF p_protein > 25 THEN
+            RETURN '优秀';
+        ELSEIF p_protein > 18 THEN
+            RETURN '良好';
+        ELSEIF p_protein > 12 THEN
+            RETURN '一般';
+        ELSE
+            RETURN '不合适';
+        END IF;
+    -- 均衡目标: 营养均衡
+    ELSE
+        IF p_calories BETWEEN 200 AND 400 AND p_protein > 15 AND p_fat < 20 THEN
+            RETURN '优秀';
+        ELSEIF p_calories BETWEEN 150 AND 500 AND p_protein > 10 THEN
+            RETURN '良好';
+        ELSE
+            RETURN '一般';
+        END IF;
+    END IF;
+END //
+DELIMITER ;
+
+-- =============================================
 -- 初始化基础数据
 -- =============================================
 
@@ -889,6 +962,10 @@ INSERT INTO users (account, password, name, college, phone) VALUES
 7. sp_get_low_stock_alert: 获取库存不足提醒
 8. sp_submit_order: 提交订单事务（保证原子性）
 9. sp_get_student_preferences: 获取学生饮食偏好统计
+
+存储函数说明:
+1. fn_calculate_recommend_score: 计算菜品推荐分数（收藏数*5 + 浏览数*2 + 订单数*3 + 销量*0.1，各部分有上限）
+2. fn_get_nutrition_level: 获取菜品营养等级（根据用户目标判断：减脂/增肌/均衡）
 */
 
 -- =============================================
