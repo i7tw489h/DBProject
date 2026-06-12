@@ -92,7 +92,10 @@
               <div class="dish-info">
                 <h4>{{ dish.name }}</h4>
                 <p class="price">¥{{ dish.price }}</p>
-                <p class="nutrition">热量: {{ dish.calories }}kcal</p>
+                <div class="recommend-info" v-if="dish.recommendScore || dish.nutritionLevel">
+                  <span v-if="dish.recommendScore" class="score-tag">推荐度: {{ dish.recommendScore.toFixed(1) }}</span>
+                  <span v-if="dish.nutritionLevel" :class="['level-tag', dish.nutritionLevel]">{{ dish.nutritionLevel }}</span>
+                </div>
               </div>
               <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
             </div>
@@ -109,7 +112,10 @@
             <div class="dish-info">
               <h4>{{ dish.name }}</h4>
               <p class="price">¥{{ dish.price }}</p>
-              <p class="nutrition">热量: {{ dish.calories }}kcal | 蛋白: {{ dish.protein }}g</p>
+              <div class="recommend-info" v-if="dish.recommendScore || dish.nutritionLevel">
+                <span v-if="dish.recommendScore" class="score-tag">推荐度: {{ dish.recommendScore.toFixed(1) }}</span>
+                <span v-if="dish.nutritionLevel" :class="['level-tag', dish.nutritionLevel]">{{ dish.nutritionLevel }}</span>
+              </div>
             </div>
             <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
           </div>
@@ -525,6 +531,46 @@ onMounted(() => {
 .nutrition {
   font-size: 12px;
   color: #999;
+}
+
+.recommend-info {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.score-tag {
+  font-size: 12px;
+  color: #3498db;
+  background: #eaf5fb;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.level-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.level-tag.优秀 {
+  color: #27ae60;
+  background: #e8f5e9;
+}
+
+.level-tag.良好 {
+  color: #f39c12;
+  background: #fff8e1;
+}
+
+.level-tag.一般 {
+  color: #95a5a6;
+  background: #ecf0f1;
+}
+
+.level-tag.不合适 {
+  color: #e74c3c;
+  background: #ffebee;
 }
 
 .dish-card el-button {

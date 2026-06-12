@@ -35,6 +35,10 @@ public class Dish {
     private BigDecimal fiber;
     @TableField(exist = false)
     private String categoryName;
+    @TableField(exist = false)
+    private Double recommendScore;
+    @TableField(exist = false)
+    private String nutritionLevel;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     @TableField(fill = FieldFill.INSERT_UPDATE)

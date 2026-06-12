@@ -9,6 +9,7 @@ import com.campus.canteen.service.CategoryService;
 import com.campus.canteen.service.DishService;
 import com.campus.canteen.service.WindowService;
 import com.campus.canteen.service.UserRestrictionsService;
+import com.campus.canteen.service.AIRecommendService;
 import com.campus.canteen.entity.UserRestrictions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +36,9 @@ public class DishController {
 
     @Autowired
     private UserRestrictionsService userRestrictionsService;
+
+    @Autowired
+    private AIRecommendService aiRecommendService;
 
     @GetMapping("/categories")
     public Result<?> getCategories() {
@@ -130,63 +134,8 @@ public class DishController {
 
     @GetMapping("/dishes/recommend/{userId}")
     public Result<?> getRecommendedDishesByRestrictions(@PathVariable Long userId) {
-        // 获取用户的忌口列表
-        List<UserRestrictions> restrictions = userRestrictionsService.getUserRestrictions(userId);
-        System.out.println("用户ID: " + userId + ", 忌口数量: " + restrictions.size());
-        
-        // 提取所有忌口关键词（从 restriction_desc 中分割）
-        List<String> restrictionKeywords = new ArrayList<>();
-        for (UserRestrictions restriction : restrictions) {
-            String desc = restriction.getRestrictionDesc();
-            System.out.println("忌口描述: " + desc);
-            if (desc != null && !desc.isEmpty()) {
-                // 支持中文逗号、英文逗号、顿号分隔
-                String[] keywords = desc.split("[，,、]");
-                for (String keyword : keywords) {
-                    String trimmed = keyword.trim();
-                    if (!trimmed.isEmpty()) {
-                        restrictionKeywords.add(trimmed);
-                        System.out.println("添加忌口关键词: " + trimmed);
-                    }
-                }
-            }
-        }
-        
-        // 获取所有菜品（使用 baseMapper 直接查询 dishes 表）
-        List<Dish> rawDishes = dishService.list();
-        System.out.println("原始菜品总数: " + rawDishes.size());
-        
-        // 打印前3个菜品的isShelf值
-        for (int i = 0; i < Math.min(3, rawDishes.size()); i++) {
-            Dish d = rawDishes.get(i);
-            System.out.println("菜品[" + d.getName() + "] isShelf=" + d.getIsShelf() + " (类型:" + (d.getIsShelf() != null ? d.getIsShelf().getClass().getSimpleName() : "null") + ")");
-        }
-        
-        // 获取所有上架的菜品
-        List<Dish> allDishes = rawDishes.stream()
-                .filter(dish -> dish.getIsShelf() != null && dish.getIsShelf() == 1)
-                .collect(Collectors.toList());
-        System.out.println("上架菜品总数: " + allDishes.size());
-        
-        // 过滤掉包含忌口配料的菜品
-        List<Dish> recommendedDishes = allDishes.stream().filter(dish -> {
-            String ingredients = dish.getIngredients();
-            String name = dish.getName();
-            if (ingredients == null || ingredients.isEmpty()) {
-                System.out.println("菜品[" + name + "]无配料信息，符合");
-                return true; // 没有配料信息的默认符合
-            }
-            // 检查是否包含任何忌口关键词
-            for (String keyword : restrictionKeywords) {
-                if (ingredients.contains(keyword)) {
-                    System.out.println("菜品[" + name + "]配料[" + ingredients + "]包含忌口[" + keyword + "], 排除");
-                    return false; // 包含忌口，排除
-                }
-            }
-            System.out.println("菜品[" + name + "]配料[" + ingredients + "]符合忌口要求");
-            return true; // 不包含忌口，符合
-        }).collect(Collectors.toList());
-        
+        // 调用AI推荐服务的忌口推荐方法，该方法会自动使用存储函数计算推荐分数和营养等级
+        List<Dish> recommendedDishes = aiRecommendService.recommendByRestrictions(userId, 10);
         System.out.println("符合忌口的菜品数量: " + recommendedDishes.size());
         return Result.success(recommendedDishes);
     }

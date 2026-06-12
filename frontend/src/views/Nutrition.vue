@@ -113,6 +113,10 @@
               <div class="dish-info">
                 <p class="dish-name">{{ dish.name }}</p>
                 <p class="dish-price">¥{{ dish.price }}</p>
+                <div class="dish-tags">
+                  <span v-if="dish.recommendScore" class="tag score">推荐度: {{ dish.recommendScore.toFixed(1) }}</span>
+                  <span v-if="dish.nutritionLevel" :class="['tag', dish.nutritionLevel]">{{ dish.nutritionLevel }}</span>
+                </div>
               </div>
               <el-button size="small" @click="addToCart(dish)">加入购物车</el-button>
             </div>
@@ -128,6 +132,10 @@
                 <div class="dish-info">
                   <p class="dish-name">{{ dish.name }}</p>
                   <p class="dish-price">¥{{ dish.price }}</p>
+                  <div class="dish-tags">
+                    <span v-if="dish.recommendScore" class="tag score">推荐度: {{ dish.recommendScore.toFixed(1) }}</span>
+                    <span v-if="dish.nutritionLevel" :class="['tag', dish.nutritionLevel]">{{ dish.nutritionLevel }}</span>
+                  </div>
                 </div>
                 <el-button size="small" @click="addToCart(dish)">加入购物车</el-button>
               </div>
@@ -1058,6 +1066,51 @@ onMounted(async () => {
 .tag.issue {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.tag.score {
+  background: #eaf5fb;
+  color: #1e40af;
+}
+
+.tag.优秀 {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tag.良好 {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.tag.一般 {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.tag.不合适 {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.dish-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.meta-item {
+  background: #f5f7fa;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dish-tags {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .history-list {
