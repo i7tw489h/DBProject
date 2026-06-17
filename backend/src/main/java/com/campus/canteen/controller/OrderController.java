@@ -79,18 +79,24 @@ public class OrderController {
     }
 
     @GetMapping("/list")
-    public Result<?> getOrdersByUserWithStatus(@RequestParam Long userId, @RequestParam(required = false) Integer status) {
-        List<Order> orders = orderService.getOrdersByUserId(userId, status);
-        return Result.success(orders);
+    public Result<?> getOrdersByUserWithStatus(
+            @RequestParam Long userId, 
+            @RequestParam(required = false) Integer status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "6") int pageSize) {
+        com.baomidou.mybatisplus.core.metadata.IPage<Order> orderPage = orderService.getOrdersByUserIdWithPage(userId, status, page, pageSize);
+        return Result.success(orderPage);
     }
 
     @GetMapping("/all")
     public Result<?> getAllOrders(
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String pickupTime,
-            @RequestParam(required = false) Long windowId) {
-        List<Order> orders = orderService.getAllOrders(status, pickupTime, windowId);
-        return Result.success(orders);
+            @RequestParam(required = false) Long windowId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "6") int pageSize) {
+        com.baomidou.mybatisplus.core.metadata.IPage<Order> orderPage = orderService.getAllOrdersWithPage(status, pickupTime, windowId, page, pageSize);
+        return Result.success(orderPage);
     }
 
     @PutMapping("/accept/{orderId}")

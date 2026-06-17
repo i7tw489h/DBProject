@@ -88,7 +88,9 @@
               <div class="dish-info">
                 <h4>{{ dish.name }}</h4>
                 <p class="price">¥{{ dish.price }}</p>
-                <p class="nutrition">热量: {{ dish.calories }}kcal</p>
+                <span v-if="dish.healthRating" :class="['health-tag', getHealthTagClass(dish.healthRating)]">
+                  {{ dish.healthRating }}
+                </span>
               </div>
               <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
             </div>
@@ -105,10 +107,21 @@
             <div class="dish-info">
               <h4>{{ dish.name }}</h4>
               <p class="price">¥{{ dish.price }}</p>
-              <p class="nutrition">热量: {{ dish.calories }}kcal | 蛋白: {{ dish.protein }}g</p>
+              <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
             </div>
-            <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
           </div>
+        </div>
+
+        <div class="pagination-container" v-if="totalDishes > 0">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[12, 24, 36, 48]"
+            :total="totalDishes"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
         </div>
 
         <div v-if="dishes.length === 0" class="empty-state">
@@ -138,6 +151,11 @@ const categories = ref([])
 const windows = ref([])
 const dishes = ref([])
 const recommendations = ref([])
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(12)
+const totalDishes = ref(0)
 
 // 扁平化推荐数据（从分组结构中提取所有菜品）
 const flattenedRecommendations = computed(() => {
@@ -183,19 +201,35 @@ const loadDishes = async () => {
     const params = {
       categoryId: activeCategory.value > 0 ? activeCategory.value : undefined,
       windowId: activeWindow.value > 0 ? activeWindow.value : undefined,
-      keyword: searchKeyword.value || undefined
+      keyword: searchKeyword.value || undefined,
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
     const result = await dishApi.getDishes(params)
     if (result.records) {
       dishes.value = result.records
+      totalDishes.value = result.total || 0
     } else if (Array.isArray(result)) {
       dishes.value = result
+      totalDishes.value = result.length
     } else {
       dishes.value = []
+      totalDishes.value = 0
     }
   } catch (error) {
     console.error('加载菜品失败:', error)
   }
+}
+
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadDishes()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadDishes()
 }
 
 const loadRecommendations = async () => {
@@ -229,11 +263,13 @@ const loadRecommendations = async () => {
 
 const selectCategory = (id) => {
   activeCategory.value = id
+  currentPage.value = 1
   loadDishes()
 }
 
 const selectWindow = (id) => {
   activeWindow.value = id
+  currentPage.value = 1
   loadDishes()
 }
 
@@ -241,10 +277,12 @@ const resetFilters = () => {
   activeCategory.value = 0
   activeWindow.value = 0
   searchKeyword.value = ''
+  currentPage.value = 1
   loadDishes()
 }
 
 const handleSearch = () => {
+  currentPage.value = 1
   loadDishes()
 }
 
@@ -262,6 +300,13 @@ const getDishEmoji = (name) => {
     '粥': '🥣', '豆浆': '🥛', '鸡蛋': '🥚', '水果': '🍎'
   }
   return emojiMap[name] || '🍽️'
+}
+
+const getHealthTagClass = (rating) => {
+  if (!rating) return ''
+  if (rating === '优秀') return 'health-tag-excellent'
+  if (rating === '良好') return 'health-tag-good'
+  return 'health-tag-recommend'
 }
 
 const goToDetail = (id) => {
@@ -493,6 +538,37 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 50px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 20px 0;
+}
+
+.health-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.health-tag-excellent {
+  background-color: #d4f4dd;
+  color: #2e8b57;
+}
+
+.health-tag-good {
+  background-color: #fff4d6;
+  color: #d49b3a;
+}
+
+.health-tag-recommend {
+  background-color: #e3f2fd;
+  color: #1976d2;
 }
 
 .empty-icon {

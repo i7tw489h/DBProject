@@ -133,6 +133,18 @@
             </el-table-column>
           </el-table>
 
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="orderCurrentPage"
+              v-model:page-size="orderPageSize"
+              :page-sizes="[6, 12, 18, 24]"
+              :total="orderTotal"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleOrderSizeChange"
+              @current-change="handleOrderPageChange"
+            />
+          </div>
+
 
         </div>
 
@@ -257,6 +269,10 @@ const orderStatus = ref('all')
 const pickupTimeFilter = ref('all')
 const windowFilter = ref('all')
 
+const orderCurrentPage = ref(1)
+const orderPageSize = ref(6)
+const orderTotal = ref(0)
+
 const dishList = ref([])
 const orderList = ref([])
 const lowStockItems = ref([])
@@ -320,7 +336,10 @@ const loadDishes = async () => {
 
 const loadOrders = async () => {
   try {
-    const params = {}
+    const params = {
+      page: orderCurrentPage.value,
+      pageSize: orderPageSize.value
+    }
     if (orderStatus.value !== 'all') {
       params.status = orderStatus.value
     }
@@ -330,10 +349,23 @@ const loadOrders = async () => {
     if (windowFilter.value !== 'all') {
       params.windowId = windowFilter.value
     }
-    orderList.value = await orderApi.getAllOrders(params)
+    const result = await orderApi.getAllOrders(params)
+    orderList.value = result.records || result || []
+    orderTotal.value = result.total || orderList.value.length
   } catch (error) {
     console.error('加载订单失败:', error)
   }
+}
+
+const handleOrderPageChange = (page) => {
+  orderCurrentPage.value = page
+  loadOrders()
+}
+
+const handleOrderSizeChange = (size) => {
+  orderPageSize.value = size
+  orderCurrentPage.value = 1
+  loadOrders()
 }
 
 const loadLowStock = async () => {
@@ -542,6 +574,13 @@ onMounted(() => {
 
 .dish-table, .order-table, .ranking-table {
   width: 100%;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 10px 0;
 }
 
 .alert-section {

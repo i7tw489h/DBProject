@@ -53,41 +53,15 @@ public class DishController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer floor,
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "100") Integer pageSize) {
+            @RequestParam(defaultValue = "12") Integer pageSize) {
         // 清理空字符串
         if (keyword != null && keyword.trim().isEmpty()) {
             keyword = null;
         }
         
-        // 处理组合筛选
-        if (keyword != null && categoryId != null && windowId != null) {
-            List<Dish> dishes = dishService.searchDishesByCategoryAndWindow(categoryId, windowId, keyword);
-            return Result.success(dishes);
-        } else if (keyword != null && categoryId != null) {
-            List<Dish> dishes = dishService.searchDishesByCategory(categoryId, keyword);
-            return Result.success(dishes);
-        } else if (keyword != null && windowId != null) {
-            List<Dish> dishes = dishService.searchDishesByWindow(windowId, keyword);
-            return Result.success(dishes);
-        } else if (keyword != null) {
-            List<Dish> dishes = dishService.searchDishes(keyword);
-            return Result.success(dishes);
-        } else if (categoryId != null && windowId != null) {
-            List<Dish> dishes = dishService.getDishesByCategoryAndWindow(categoryId, windowId);
-            return Result.success(dishes);
-        } else if (categoryId != null) {
-            List<Dish> dishes = dishService.getDishesByCategory(categoryId);
-            return Result.success(dishes);
-        } else if (windowId != null) {
-            List<Dish> dishes = dishService.getDishesByWindow(windowId);
-            return Result.success(dishes);
-        } else if (floor != null) {
-            List<Dish> dishes = dishService.getDishesByFloor(floor);
-            return Result.success(dishes);
-        } else {
-            PageResult<Dish> page = dishService.getDishesPage(pageNum, pageSize);
-            return Result.success(page);
-        }
+        // 统一使用分页接口，支持组合筛选
+        PageResult<Dish> page = dishService.getDishesPageWithFilter(categoryId, windowId, keyword, floor, pageNum, pageSize);
+        return Result.success(page);
     }
 
     @GetMapping("/dish/{dishId}")

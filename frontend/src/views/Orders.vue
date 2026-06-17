@@ -12,7 +12,7 @@
 
     <main class="orders-content">
       <div class="tabs">
-        <el-tabs v-model="activeTab" @tab-change="loadOrders">
+        <el-tabs v-model="activeTab" @tab-change="handleTabChange">
           <el-tab-pane label="全部订单" name="all"></el-tab-pane>
           <el-tab-pane label="待接单" name="pendingAccept"></el-tab-pane>
           <el-tab-pane label="待出餐" name="pendingServe"></el-tab-pane>
@@ -62,7 +62,19 @@
         </div>
       </div>
 
-      <div class="empty-state" v-else>
+      <div class="pagination-container" v-if="totalOrders > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[6, 12, 18, 24]"
+          :total="totalOrders"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
+      </div>
+
+      <div class="empty-state" v-if="orders.length === 0">
         <span class="empty-icon">📋</span>
         <p>暂无订单</p>
       </div>
@@ -82,6 +94,9 @@ const userStore = useUserStore()
 
 const activeTab = ref('all')
 const orders = ref([])
+const currentPage = ref(1)
+const pageSize = ref(6)
+const totalOrders = ref(0)
 
 const statusMap = {
   0: '待支付',
@@ -134,10 +149,28 @@ const loadOrders = async () => {
   }
   
   try {
-    orders.value = await orderApi.getOrders(userStore.user.userId, status)
+    const result = await orderApi.getOrders(userStore.user.userId, status, currentPage.value, pageSize.value)
+    orders.value = result.records || result || []
+    totalOrders.value = result.total || orders.value.length
   } catch (error) {
     console.error('加载订单失败:', error)
   }
+}
+
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadOrders()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadOrders()
+}
+
+const handleTabChange = () => {
+  currentPage.value = 1
+  loadOrders()
 }
 
 const cancelOrder = async (orderId) => {
@@ -359,6 +392,15 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 100px;
+  background: white;
+  border-radius: 10px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 20px;
   background: white;
   border-radius: 10px;
 }

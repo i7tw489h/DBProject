@@ -18,6 +18,7 @@ public interface DishService extends IService<Dish> {
     List<Dish> searchDishesByWindow(Long windowId, String keyword);
     List<Dish> searchDishesByCategoryAndWindow(Long categoryId, Long windowId, String keyword);
     PageResult<Dish> getDishesPage(Integer pageNum, Integer pageSize);
+    PageResult<Dish> getDishesPageWithFilter(Long categoryId, Long windowId, String keyword, Integer floor, Integer pageNum, Integer pageSize);
     Dish getDishDetail(Long dishId);
     Map<String, Object> getDishWithNutrition(Long dishId);
     boolean addDish(Dish dish);

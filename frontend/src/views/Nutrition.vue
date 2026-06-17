@@ -106,6 +106,9 @@
                 <div class="dish-info">
                   <p class="dish-name">{{ dish.name }}</p>
                   <p class="dish-price">¥{{ dish.price }}</p>
+                  <span v-if="dish.healthRating" :class="['health-tag', getHealthTagClass(dish.healthRating)]">
+                    {{ dish.healthRating }}
+                  </span>
                 </div>
                 <el-button size="small" @click="addToCart(dish)">加入购物车</el-button>
               </div>
@@ -334,6 +337,61 @@ const getEvaluationTitle = (score) => {
   if (score >= 70) return '良好！再接再厉'
   if (score >= 50) return '一般，还需努力'
   return '较差，请调整饮食'
+}
+
+const getHealthTagClass = (rating) => {
+  if (!rating) return ''
+  if (rating === '优秀') return 'health-tag-excellent'
+  if (rating === '不优秀') return 'health-tag-not-excellent'
+  if (rating === '推荐值') return 'health-tag-recommend'
+  if (rating === '不推荐值') return 'health-tag-not-recommend'
+  if (rating === '良好') return 'health-tag-good'
+  if (rating.startsWith('推荐度')) return 'health-tag-recommend-score'
+  return 'health-tag-recommend'
+}
+
+// 根据菜品营养计算健康评级（前端兜底逻辑，当后端未返回 healthRating 时使用）
+const calcHealthRating = (dish) => {
+  if (dish.healthRating) return dish.healthRating
+
+  let score = 0
+  const calories = Number(dish.calories) || 0
+  const protein = Number(dish.protein) || 0
+  const fat = Number(dish.fat) || 0
+  const sodium = Number(dish.sodium) || 0
+
+  // 热量评分 (满分30)
+  if (calories > 0 && calories <= 350) score += 30
+  else if (calories > 0 && calories <= 500) score += 22
+  else if (calories > 0 && calories <= 700) score += 15
+  else if (calories > 0) score += 8
+  else score += 12
+
+  // 蛋白质评分 (满分30)
+  if (protein >= 20) score += 30
+  else if (protein >= 15) score += 25
+  else if (protein >= 10) score += 18
+  else if (protein >= 5) score += 12
+  else if (protein > 0) score += 6
+  else score += 8
+
+  // 脂肪评分 (满分20)
+  if (fat > 0 && fat <= 8) score += 20
+  else if (fat > 0 && fat <= 15) score += 15
+  else if (fat > 0 && fat <= 25) score += 8
+  else if (fat > 0) score += 3
+  else score += 10
+
+  // 钠评分 (满分20)
+  if (sodium > 0 && sodium <= 400) score += 20
+  else if (sodium > 0 && sodium <= 800) score += 14
+  else if (sodium > 0 && sodium <= 1200) score += 8
+  else if (sodium > 0) score += 3
+  else score += 8
+
+  if (score >= 80) return '优秀'
+  if (score >= 60) return '良好'
+  return '推荐值'
 }
 
 const loadNutritionTargets = async () => {
@@ -747,6 +805,12 @@ onMounted(async () => {
   margin: 0;
 }
 
+.dish-info .dish-nutrition {
+  font-size: 12px;
+  color: #f56c6c;
+  margin: 0;
+}
+
 .recommend-group h3 {
   font-size: 15px;
   color: #666;
@@ -1054,5 +1118,52 @@ onMounted(async () => {
   .evaluation-tags {
     flex-direction: column;
   }
+}
+
+.health-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.health-tag-excellent {
+  background-color: #d4f4dd;
+  color: #2e8b57;
+}
+
+.health-tag-not-excellent {
+  background-color: #ffe0e0;
+  color: #c62828;
+}
+
+.health-tag-good {
+  background-color: #fff4d6;
+  color: #d49b3a;
+}
+
+.health-tag-recommend {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.health-tag-not-recommend {
+  background-color: #ffe0e0;
+  color: #c62828;
+}
+
+.health-tag-recommend-score {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.4;
+  text-align: left;
 }
 </style>

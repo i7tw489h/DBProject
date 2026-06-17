@@ -1,6 +1,7 @@
 package com.campus.canteen.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.campus.canteen.common.PageResult;
@@ -73,14 +74,15 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         Map<Long, Nutrition> nutritionMap = nutritionList.stream()
                 .collect(Collectors.toMap(Nutrition::getDishId, n -> n, (a, b) -> a));
         for (Dish dish : dishes) {
+            // 如果视图已经返回了 health_rating，则不覆盖（这是数据库函数计算的结果）
             Nutrition nutrition = nutritionMap.get(dish.getDishId());
             if (nutrition != null) {
-                dish.setCalories(nutrition.getCalories());
-                dish.setProtein(nutrition.getProtein());
-                dish.setFat(nutrition.getFat());
-                dish.setCarbs(nutrition.getCarbs());
-                dish.setSodium(nutrition.getSodium());
-                dish.setFiber(nutrition.getFiber());
+                if (dish.getCalories() == null) dish.setCalories(nutrition.getCalories());
+                if (dish.getProtein() == null) dish.setProtein(nutrition.getProtein());
+                if (dish.getFat() == null) dish.setFat(nutrition.getFat());
+                if (dish.getCarbs() == null) dish.setCarbs(nutrition.getCarbs());
+                if (dish.getSodium() == null) dish.setSodium(nutrition.getSodium());
+                if (dish.getFiber() == null) dish.setFiber(nutrition.getFiber());
             }
         }
     }
@@ -88,7 +90,30 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
     private List<Dish> prepareDishes(List<Dish> dishes) {
         fillImageUrl(dishes);
         fillNutrition(dishes);
+        fillHealthRating(dishes);
         return dishes;
+    }
+
+    /**
+     * 调用存储函数 fn_calc_health_rating 为每个菜品计算健康评级
+     */
+    private void fillHealthRating(List<Dish> dishes) {
+        if (dishes == null || dishes.isEmpty()) {
+            return;
+        }
+        for (Dish dish : dishes) {
+            try {
+                String rating = baseMapper.calcHealthRating(
+                        dish.getCalories(),
+                        dish.getProtein(),
+                        dish.getFat(),
+                        dish.getSodium());
+                dish.setHealthRating(rating);
+            } catch (Exception e) {
+                System.err.println("计算菜品 " + dish.getName() + " 健康评级失败: " + e.getMessage());
+                dish.setHealthRating("推荐值");
+            }
+        }
     }
 
     @Override
@@ -146,6 +171,19 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         prepareDishes(page.getRecords());
         return new PageResult<>(page.getTotal(), page.getRecords(),
                                page.getCurrent(), page.getSize());
+    }
+
+    @Override
+    public PageResult<Dish> getDishesPageWithFilter(Long categoryId, Long windowId, String keyword, Integer floor, Integer pageNum, Integer pageSize) {
+        Page<Dish> page = new Page<>(pageNum, pageSize);
+        // 使用自定义视图分页查询，让 health_rating 字段可以返回
+        IPage<Dish> dishPage = baseMapper.selectPageWithFilter(page, 
+                categoryId != null && categoryId > 0 ? categoryId : null,
+                windowId != null && windowId > 0 ? windowId : null,
+                (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null);
+        prepareDishes(dishPage.getRecords());
+        return new PageResult<>(dishPage.getTotal(), dishPage.getRecords(),
+                               dishPage.getCurrent(), dishPage.getSize());
     }
 
     @Override
