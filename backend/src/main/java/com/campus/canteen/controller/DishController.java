@@ -8,11 +8,17 @@ import com.campus.canteen.entity.Window;
 import com.campus.canteen.service.CategoryService;
 import com.campus.canteen.service.DishService;
 import com.campus.canteen.service.WindowService;
+import com.campus.canteen.service.UserRestrictionsService;
+import com.campus.canteen.service.AIRecommendService;
+import com.campus.canteen.entity.UserRestrictions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -27,6 +33,12 @@ public class DishController {
 
     @Autowired
     private WindowService windowService;
+
+    @Autowired
+    private UserRestrictionsService userRestrictionsService;
+
+    @Autowired
+    private AIRecommendService aiRecommendService;
 
     @GetMapping("/categories")
     public Result<?> getCategories() {
@@ -92,5 +104,13 @@ public class DishController {
     public Result<?> deleteDish(@PathVariable Long dishId) {
         boolean success = dishService.deleteDish(dishId);
         return success ? Result.success("删除成功") : Result.error("删除失败");
+    }
+
+    @GetMapping("/dishes/recommend/{userId}")
+    public Result<?> getRecommendedDishesByRestrictions(@PathVariable Long userId) {
+        // 调用AI推荐服务的忌口推荐方法，该方法会自动使用存储函数计算推荐分数和营养等级
+        List<Dish> recommendedDishes = aiRecommendService.recommendByRestrictions(userId, 10);
+        System.out.println("符合忌口的菜品数量: " + recommendedDishes.size());
+        return Result.success(recommendedDishes);
     }
 }

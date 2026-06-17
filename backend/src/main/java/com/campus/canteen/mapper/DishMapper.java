@@ -63,38 +63,44 @@ public interface DishMapper extends BaseMapper<Dish> {
     @Select("SELECT n.* FROM nutrition n WHERE n.dish_id = #{dishId}")
     Nutrition selectNutritionByDishId(Long dishId);
 
-    /**
-     * 调用存储函数计算健康评级
-     */
-    @Select("SELECT fn_calc_health_rating(#{calories}, #{protein}, #{fat}, #{sodium})")
-    String calcHealthRating(@Param("calories") java.math.BigDecimal calories,
-                            @Param("protein") java.math.BigDecimal protein,
-                            @Param("fat") java.math.BigDecimal fat,
-                            @Param("sodium") java.math.BigDecimal sodium);
+    @Select("SELECT name FROM categories WHERE category_id = #{categoryId}")
+    String getCategoryName(Long categoryId);
+
+    @Select("SELECT name FROM windows WHERE window_id = #{windowId}")
+    String getWindowName(Long windowId);
+    
+    @Select("SELECT MAX(dish_id) FROM dishes")
+    Long selectMaxId();
 
     /**
-     * 调用存储函数计算推荐度评分（用于猜你喜欢组）
+     * 调用存储函数计算菜品推荐分数
+     * @param favoriteCount 收藏数
+     * @param browseCount 浏览数
+     * @param orderCount 订单数
+     * @param salesCount 销量
+     * @return 推荐分数
      */
-    @Select("SELECT fn_calc_recommend_score(#{calories}, #{protein}, #{fat}, #{sodium})")
-    java.math.BigDecimal calcRecommendScore(@Param("calories") java.math.BigDecimal calories,
-                                            @Param("protein") java.math.BigDecimal protein,
-                                            @Param("fat") java.math.BigDecimal fat,
-                                            @Param("sodium") java.math.BigDecimal sodium);
+    @Select("SELECT fn_calculate_recommend_score(#{favoriteCount}, #{browseCount}, #{orderCount}, #{salesCount})")
+    java.math.BigDecimal calculateRecommendScore(
+            @org.apache.ibatis.annotations.Param("favoriteCount") Integer favoriteCount,
+            @org.apache.ibatis.annotations.Param("browseCount") Integer browseCount,
+            @org.apache.ibatis.annotations.Param("orderCount") Integer orderCount,
+            @org.apache.ibatis.annotations.Param("salesCount") Integer salesCount
+    );
 
     /**
-     * 分页查询菜品，支持筛选与随机排序
+     * 调用存储函数获取菜品营养等级
+     * @param calories 卡路里
+     * @param protein 蛋白质(g)
+     * @param fat 脂肪(g)
+     * @param goal 用户目标(1-减脂, 2-增肌, 3-均衡)
+     * @return 营养等级(优秀/良好/一般/不合适)
      */
-    @Select({
-        "<script>",
-        "SELECT * FROM dishes WHERE is_shelf = 1",
-        "<if test='categoryId != null and categoryId > 0'> AND category_id = #{categoryId}</if>",
-        "<if test='windowId != null and windowId > 0'> AND window_id = #{windowId}</if>",
-        "<if test='keyword != null and keyword != \"\"'> AND (name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))</if>",
-        "ORDER BY RAND()",
-        "</script>"
-    })
-    IPage<Dish> selectPageWithFilter(Page<Dish> page,
-                                     @Param("categoryId") Long categoryId,
-                                     @Param("windowId") Long windowId,
-                                     @Param("keyword") String keyword);
+    @Select("SELECT fn_get_nutrition_level(#{calories}, #{protein}, #{fat}, #{goal})")
+    String getNutritionLevel(
+            @org.apache.ibatis.annotations.Param("calories") java.math.BigDecimal calories,
+            @org.apache.ibatis.annotations.Param("protein") java.math.BigDecimal protein,
+            @org.apache.ibatis.annotations.Param("fat") java.math.BigDecimal fat,
+            @org.apache.ibatis.annotations.Param("goal") Integer goal
+    );
 }

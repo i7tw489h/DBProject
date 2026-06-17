@@ -22,9 +22,14 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
+    default-property-inclusion: non_null
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 mybatis-plus:
-  mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.campus.canteen.entity
   configuration:
     map-underscore-to-camel-case: true
@@ -43,11 +48,13 @@ jwt:
 logging:
   level:
     com.campus.canteen: debug
+    org.springframework: debug
+    com.baomidou.mybatisplus: debug
 
 ai:
   enabled: true
   alibaba:
-    api-key: your-api-key
+    api-key: sk-9785e398279444f6b685806162d685b1
     api-url: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
     model: qwen-plus-2025-07-28
     fallback-on-error: false

@@ -1,5 +1,6 @@
 package com.campus.canteen.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.campus.canteen.common.Result;
 import com.campus.canteen.entity.Order;
 import com.campus.canteen.entity.OrderItem;
@@ -83,8 +84,16 @@ public class OrderController {
             @RequestParam Long userId, 
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "6") int pageSize) {
-        com.baomidou.mybatisplus.core.metadata.IPage<Order> orderPage = orderService.getOrdersByUserIdWithPage(userId, status, page, pageSize);
+            @RequestParam(defaultValue = "10") int pageSize) {
+        if (page <= 0) page = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        
+        if (page == 1 && pageSize >= 1000) {
+            List<Order> orders = orderService.getOrdersByUserId(userId, status);
+            return Result.success(orders);
+        }
+        
+        IPage<Order> orderPage = orderService.getOrdersByUserIdWithPage(userId, status, page, pageSize);
         return Result.success(orderPage);
     }
 
@@ -94,8 +103,16 @@ public class OrderController {
             @RequestParam(required = false) String pickupTime,
             @RequestParam(required = false) Long windowId,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "6") int pageSize) {
-        com.baomidou.mybatisplus.core.metadata.IPage<Order> orderPage = orderService.getAllOrdersWithPage(status, pickupTime, windowId, page, pageSize);
+            @RequestParam(defaultValue = "10") int pageSize) {
+        if (page <= 0) page = 1;
+        if (pageSize <= 0 || pageSize > 100) pageSize = 10;
+        
+        if (page == 1 && pageSize >= 1000) {
+            List<Order> orders = orderService.getAllOrders(status, pickupTime, windowId);
+            return Result.success(orders);
+        }
+        
+        IPage<Order> orderPage = orderService.getAllOrdersWithPage(status, pickupTime, page, pageSize);
         return Result.success(orderPage);
     }
 

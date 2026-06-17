@@ -1,5 +1,7 @@
 package com.campus.canteen.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.canteen.entity.Order;
 import com.campus.canteen.entity.OrderItem;
 import com.campus.canteen.mapper.OrderMapper;
@@ -228,5 +230,33 @@ public class OrderServiceImpl implements OrderService {
     public void deleteOrder(String orderId) {
         orderItemMapper.deleteByOrderId(orderId);
         orderMapper.deleteById(orderId);
+    }
+
+    @Override
+    public IPage<Order> getOrdersByUserIdWithPage(Long userId, Integer status, int page, int pageSize) {
+        Page<Order> pageParam = new Page<>(page, pageSize);
+        IPage<Order> orderPage = orderMapper.selectByUserIdWithPage(pageParam, userId, status);
+        
+        for (Order order : orderPage.getRecords()) {
+            List<OrderItem> items = orderItemMapper.selectByOrderId(order.getOrderId());
+            fillOrderItemImageUrl(items);
+            order.setItems(items);
+        }
+        
+        return orderPage;
+    }
+
+    @Override
+    public IPage<Order> getAllOrdersWithPage(Integer status, String pickupTime, int page, int pageSize) {
+        Page<Order> pageParam = new Page<>(page, pageSize);
+        IPage<Order> orderPage = orderMapper.selectAllWithPage(pageParam, status, pickupTime);
+        
+        for (Order order : orderPage.getRecords()) {
+            List<OrderItem> items = orderItemMapper.selectByOrderId(order.getOrderId());
+            fillOrderItemImageUrl(items);
+            order.setItems(items);
+        }
+        
+        return orderPage;
     }
 }
