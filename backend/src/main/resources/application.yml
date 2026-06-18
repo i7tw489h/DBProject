@@ -23,6 +23,18 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
+    default-property-inclusion: non_null
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+
+# Qwen AI配置
+qwen:
+  enabled: true
+  api-key: sk-b6795654a76445a093ec6c540891243e
+  api-url: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
+  model: qwen-turbo
 
 mybatis-plus:
   type-aliases-package: com.campus.canteen.entity

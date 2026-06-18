@@ -93,6 +93,33 @@
       </div>
 
       <div class="form-section">
+        <h3>🚫 个人忌口</h3>
+        <div class="restrictions-list">
+          <div v-for="item in restrictions" :key="item.restrictionId" class="restriction-item">
+            <el-tag :type="getRestrictionTypeTag(item.restrictionType)" effect="dark">
+              {{ getRestrictionTypeLabel(item.restrictionType) }}
+            </el-tag>
+            <span class="restriction-desc">{{ item.restrictionDesc }}</span>
+            <el-button type="danger" size="small" circle @click="deleteRestriction(item.restrictionId)">
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </div>
+          <el-empty v-if="restrictions.length === 0" description="暂无忌口设置" />
+        </div>
+        <div class="add-restriction">
+          <el-select v-model="newRestriction.type" placeholder="选择忌口类型" style="width: 150px">
+            <el-option label="过敏" :value="1" />
+            <el-option label="宗教" :value="2" />
+            <el-option label="素食" :value="3" />
+            <el-option label="疾病" :value="4" />
+            <el-option label="其他" :value="5" />
+          </el-select>
+          <el-input v-model="newRestriction.desc" placeholder="请输入具体忌口内容（如：花生、牛肉等）" style="width: 250px; margin: 0 10px" />
+          <el-button type="primary" @click="addRestriction" :loading="loading.restriction">添加</el-button>
+        </div>
+      </div>
+
+      <div class="form-section">
         <h3>🔐 账户安全</h3>
         <div class="password-form">
           <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
@@ -121,7 +148,8 @@
 import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
-import { userApi } from '@/api'
+import { userApi, restrictionApi } from '@/api'
+import { Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -150,7 +178,14 @@ const loading = reactive({
   basic: false,
   health: false,
   goal: false,
-  password: false
+  password: false,
+  restriction: false
+})
+
+const restrictions = ref([])
+const newRestriction = ref({
+  type: null,
+  desc: ''
 })
 
 const passwordRules = {
@@ -302,8 +337,62 @@ const goBack = () => {
   router.push('/')
 }
 
+const getRestrictionTypeLabel = (type) => {
+  const labels = { 1: '过敏', 2: '宗教', 3: '素食', 4: '疾病', 5: '其他' }
+  return labels[type] || '其他'
+}
+
+const getRestrictionTypeTag = (type) => {
+  const tags = { 1: 'danger', 2: 'warning', 3: 'success', 4: 'info', 5: '' }
+  return tags[type] || ''
+}
+
+const loadRestrictions = async () => {
+  try {
+    const userId = userStore.user?.userId
+    if (!userId) return
+    const res = await restrictionApi.getUserRestrictions(userId)
+    restrictions.value = res || []
+  } catch (error) {
+    console.error('加载忌口信息失败:', error)
+  }
+}
+
+const addRestriction = async () => {
+  if (!newRestriction.value.type || !newRestriction.value.desc.trim()) {
+    ElMessage.warning('请选择忌口类型并输入具体内容')
+    return
+  }
+  loading.restriction = true
+  try {
+    await restrictionApi.saveUserRestriction({
+      userId: userStore.user.userId,
+      restrictionType: newRestriction.value.type,
+      restrictionDesc: newRestriction.value.desc.trim()
+    })
+    ElMessage.success('添加成功')
+    newRestriction.value = { type: null, desc: '' }
+    loadRestrictions()
+  } catch (error) {
+    ElMessage.error('添加失败')
+  } finally {
+    loading.restriction = false
+  }
+}
+
+const deleteRestriction = async (restrictionId) => {
+  try {
+    await restrictionApi.deleteUserRestriction(restrictionId)
+    ElMessage.success('删除成功')
+    loadRestrictions()
+  } catch (error) {
+    ElMessage.error('删除失败')
+  }
+}
+
 onMounted(() => {
   loadUserInfo()
+  loadRestrictions()
 })
 </script>
 
@@ -414,6 +503,33 @@ onMounted(() => {
 
 .password-form {
   padding: 10px 0;
+}
+
+.restrictions-list {
+  margin-bottom: 20px;
+}
+
+.restriction-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.restriction-desc {
+  flex: 1;
+  color: #333;
+  font-size: 14px;
+}
+
+.add-restriction {
+  display: flex;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px dashed #e0e0e0;
 }
 
 .actions-section {
