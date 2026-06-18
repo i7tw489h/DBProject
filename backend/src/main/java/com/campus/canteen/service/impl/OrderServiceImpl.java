@@ -145,6 +145,34 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public com.baomidou.mybatisplus.core.metadata.IPage<Order> getOrdersByUserIdWithPage(Long userId, Integer status, int page, int pageSize) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Order> pageParam = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, pageSize);
+        com.baomidou.mybatisplus.core.metadata.IPage<Order> orderPage = orderMapper.selectByUserIdWithPage(pageParam, userId, status);
+        
+        for (Order order : orderPage.getRecords()) {
+            List<OrderItem> items = orderItemMapper.selectByOrderId(order.getOrderId());
+            fillOrderItemImageUrl(items);
+            order.setItems(items);
+        }
+        
+        return orderPage;
+    }
+
+    @Override
+    public com.baomidou.mybatisplus.core.metadata.IPage<Order> getAllOrdersWithPage(Integer status, String pickupTime, Long windowId, int page, int pageSize) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Order> pageParam = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, pageSize);
+        com.baomidou.mybatisplus.core.metadata.IPage<Order> orderPage = orderMapper.selectAllWithPage(pageParam, status, pickupTime, windowId);
+        
+        for (Order order : orderPage.getRecords()) {
+            List<OrderItem> items = orderItemMapper.selectByOrderId(order.getOrderId());
+            fillOrderItemImageUrl(items);
+            order.setItems(items);
+        }
+        
+        return orderPage;
+    }
+
+    @Override
     public void acceptOrder(String orderId) {
         Order order = orderMapper.selectById(orderId);
         if (order != null) {

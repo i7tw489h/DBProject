@@ -14,6 +14,8 @@ public interface OrderService {
     void cancelOrder(String orderId);
     List<Order> getAllOrders(Integer status);
     List<Order> getAllOrders(Integer status, String pickupTime, Long windowId);
+    IPage<Order> getOrdersByUserIdWithPage(Long userId, Integer status, int page, int pageSize);
+    IPage<Order> getAllOrdersWithPage(Integer status, String pickupTime, Long windowId, int page, int pageSize);
     void acceptOrder(String orderId);
     void serveOrder(String orderId);
     void finishOrder(String orderId);

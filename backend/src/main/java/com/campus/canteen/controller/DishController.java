@@ -8,11 +8,17 @@ import com.campus.canteen.entity.Window;
 import com.campus.canteen.service.CategoryService;
 import com.campus.canteen.service.DishService;
 import com.campus.canteen.service.WindowService;
+import com.campus.canteen.service.UserRestrictionsService;
+import com.campus.canteen.service.AIRecommendService;
+import com.campus.canteen.entity.UserRestrictions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -27,6 +33,12 @@ public class DishController {
 
     @Autowired
     private WindowService windowService;
+
+    @Autowired
+    private UserRestrictionsService userRestrictionsService;
+
+    @Autowired
+    private AIRecommendService aiRecommendService;
 
     @GetMapping("/categories")
     public Result<?> getCategories() {
@@ -53,41 +65,15 @@ public class DishController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer floor,
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "100") Integer pageSize) {
+            @RequestParam(defaultValue = "12") Integer pageSize) {
         // 清理空字符串
         if (keyword != null && keyword.trim().isEmpty()) {
             keyword = null;
         }
         
-        // 处理组合筛选
-        if (keyword != null && categoryId != null && windowId != null) {
-            List<Dish> dishes = dishService.searchDishesByCategoryAndWindow(categoryId, windowId, keyword);
-            return Result.success(dishes);
-        } else if (keyword != null && categoryId != null) {
-            List<Dish> dishes = dishService.searchDishesByCategory(categoryId, keyword);
-            return Result.success(dishes);
-        } else if (keyword != null && windowId != null) {
-            List<Dish> dishes = dishService.searchDishesByWindow(windowId, keyword);
-            return Result.success(dishes);
-        } else if (keyword != null) {
-            List<Dish> dishes = dishService.searchDishes(keyword);
-            return Result.success(dishes);
-        } else if (categoryId != null && windowId != null) {
-            List<Dish> dishes = dishService.getDishesByCategoryAndWindow(categoryId, windowId);
-            return Result.success(dishes);
-        } else if (categoryId != null) {
-            List<Dish> dishes = dishService.getDishesByCategory(categoryId);
-            return Result.success(dishes);
-        } else if (windowId != null) {
-            List<Dish> dishes = dishService.getDishesByWindow(windowId);
-            return Result.success(dishes);
-        } else if (floor != null) {
-            List<Dish> dishes = dishService.getDishesByFloor(floor);
-            return Result.success(dishes);
-        } else {
-            PageResult<Dish> page = dishService.getDishesPage(pageNum, pageSize);
-            return Result.success(page);
-        }
+        // 统一使用分页接口，支持组合筛选
+        PageResult<Dish> page = dishService.getDishesPageWithFilter(categoryId, windowId, keyword, floor, pageNum, pageSize);
+        return Result.success(page);
     }
 
     @GetMapping("/dish/{dishId}")
@@ -118,5 +104,13 @@ public class DishController {
     public Result<?> deleteDish(@PathVariable Long dishId) {
         boolean success = dishService.deleteDish(dishId);
         return success ? Result.success("删除成功") : Result.error("删除失败");
+    }
+
+    @GetMapping("/dishes/recommend/{userId}")
+    public Result<?> getRecommendedDishesByRestrictions(@PathVariable Long userId) {
+        // 调用AI推荐服务的忌口推荐方法，该方法会自动使用存储函数计算推荐分数和营养等级
+        List<Dish> recommendedDishes = aiRecommendService.recommendByRestrictions(userId, 10);
+        System.out.println("符合忌口的菜品数量: " + recommendedDishes.size());
+        return Result.success(recommendedDishes);
     }
 }

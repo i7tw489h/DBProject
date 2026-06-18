@@ -18,6 +18,7 @@ public class Dish {
     private Long categoryId;
     private Long windowId;
     private Integer stock;
+    @TableField("is_shelf")
     private Integer isShelf;
     private Integer salesCount;
     @TableField(exist = false)
@@ -34,6 +35,10 @@ public class Dish {
     private BigDecimal fiber;
     @TableField(exist = false)
     private String categoryName;
+    @TableField(exist = false)
+    private Double recommendScore;
+    @TableField(exist = false)
+    private String nutritionLevel;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     @TableField(fill = FieldFill.INSERT_UPDATE)

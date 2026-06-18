@@ -12,7 +12,7 @@
 
     <main class="orders-content">
       <div class="tabs">
-        <el-tabs v-model="activeTab" @tab-change="loadOrders">
+        <el-tabs v-model="activeTab" @tab-change="handleTabChange">
           <el-tab-pane label="全部订单" name="all"></el-tab-pane>
           <el-tab-pane label="待接单" name="pendingAccept"></el-tab-pane>
           <el-tab-pane label="待出餐" name="pendingServe"></el-tab-pane>
@@ -174,6 +174,22 @@ const loadOrders = async () => {
   } catch (error) {
     console.error('加载订单失败:', error)
   }
+}
+
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadOrders()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadOrders()
+}
+
+const handleTabChange = () => {
+  currentPage.value = 1
+  loadOrders()
 }
 
 const cancelOrder = async (orderId) => {
@@ -423,6 +439,15 @@ watch(activeTab, () => {
 .empty-state {
   text-align: center;
   padding: 100px;
+  background: white;
+  border-radius: 10px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 20px;
   background: white;
   border-radius: 10px;
 }

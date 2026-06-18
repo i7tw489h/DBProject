@@ -76,19 +76,26 @@
       </aside>
 
       <main class="content">
-        <div class="ai-recommend" v-if="flattenedRecommendations.length > 0">
+        <!-- AI为您推荐 - 符合忌口菜品 -->
+        <div class="ai-recommend" v-if="currentRestrictionDishes.length > 0">
           <div class="section-header">
             <h2>🤖 AI为您推荐</h2>
-            <el-button type="text" @click="refreshRecommend">换一批</el-button>
+            <div class="header-actions">
+              <span class="section-desc">根据您的忌口偏好推荐</span>
+              <el-button type="text" @click="refreshRecommend">换一批</el-button>
+            </div>
           </div>
           <div class="dish-grid recommend-grid">
-            <div class="dish-card" v-for="dish in flattenedRecommendations" :key="dish.dishId" @click="goToDetail(dish.dishId)">
+            <div class="dish-card" v-for="dish in currentRestrictionDishes" :key="dish.dishId" @click="goToDetail(dish.dishId)">
               <img v-if="dish.imageUrl" :src="dish.imageUrl" alt="菜品图片" class="dish-image" />
               <div v-else class="dish-emoji"><span>{{ getDishEmoji(dish.name) }}</span></div>
               <div class="dish-info">
                 <h4>{{ dish.name }}</h4>
                 <p class="price">¥{{ dish.price }}</p>
-                <p class="nutrition">热量: {{ dish.calories }}kcal</p>
+                <div class="recommend-info" v-if="dish.recommendScore || dish.nutritionLevel">
+                  <span v-if="dish.recommendScore" class="score-tag">推荐度: {{ dish.recommendScore.toFixed(1) }}</span>
+                  <span v-if="dish.nutritionLevel" :class="['level-tag', dish.nutritionLevel]">{{ dish.nutritionLevel }}</span>
+                </div>
               </div>
               <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
             </div>
@@ -105,10 +112,24 @@
             <div class="dish-info">
               <h4>{{ dish.name }}</h4>
               <p class="price">¥{{ dish.price }}</p>
-              <p class="nutrition">热量: {{ dish.calories }}kcal | 蛋白: {{ dish.protein }}g</p>
+              <div class="recommend-info" v-if="dish.recommendScore || dish.nutritionLevel">
+                <span v-if="dish.recommendScore" class="score-tag">推荐度: {{ dish.recommendScore.toFixed(1) }}</span>
+                <span v-if="dish.nutritionLevel" :class="['level-tag', dish.nutritionLevel]">{{ dish.nutritionLevel }}</span>
+              </div>
             </div>
-            <el-button type="primary" size="small" @click.stop="addToCart(dish)">加入购物车</el-button>
           </div>
+        </div>
+
+        <div class="pagination-container" v-if="totalDishes > 0">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[12, 24, 36, 48]"
+            :total="totalDishes"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
         </div>
 
         <div v-if="dishes.length === 0" class="empty-state">
@@ -125,7 +146,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ShoppingCart, User } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore, useCartStore } from '@/stores'
-import { dishApi, aiApi } from '@/api'
+import { dishApi, aiApi, restrictionApi } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -138,28 +159,29 @@ const categories = ref([])
 const windows = ref([])
 const dishes = ref([])
 const recommendations = ref([])
+const restrictionDishes = ref([])
+const currentRestrictionIndex = ref(0) // 当前显示的符合忌口菜品起始索引
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(12)
+const totalDishes = ref(0)
 
 // 扁平化推荐数据（从分组结构中提取所有菜品）
 const flattenedRecommendations = computed(() => {
   if (!recommendations.value || recommendations.value.length === 0) {
+// 当前显示的4个符合忌口菜品
+const currentRestrictionDishes = computed(() => {
+  if (!restrictionDishes.value || restrictionDishes.value.length === 0) {
     return []
   }
-  // 从分组结构中提取所有菜品
-  const allDishes = []
-  const dishIdSet = new Set() // 去重
-  
-  recommendations.value.forEach(group => {
-    if (group.dishes && group.dishes.length > 0) {
-      group.dishes.forEach(dish => {
-        if (dish.dishId && !dishIdSet.has(dish.dishId)) {
-          dishIdSet.add(dish.dishId)
-          allDishes.push(dish)
-        }
-      })
-    }
-  })
-  
-  return allDishes.slice(0, 6) // 只取前6个推荐
+  // 从当前索引开始取4个菜品，循环显示
+  const result = []
+  for (let i = 0; i < 4; i++) {
+    const index = (currentRestrictionIndex.value + i) % restrictionDishes.value.length
+    result.push(restrictionDishes.value[index])
+  }
+  return result
 })
 
 const loadCategories = async () => {
@@ -183,19 +205,35 @@ const loadDishes = async () => {
     const params = {
       categoryId: activeCategory.value > 0 ? activeCategory.value : undefined,
       windowId: activeWindow.value > 0 ? activeWindow.value : undefined,
-      keyword: searchKeyword.value || undefined
+      keyword: searchKeyword.value || undefined,
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
     const result = await dishApi.getDishes(params)
     if (result.records) {
       dishes.value = result.records
+      totalDishes.value = result.total || 0
     } else if (Array.isArray(result)) {
       dishes.value = result
+      totalDishes.value = result.length
     } else {
       dishes.value = []
+      totalDishes.value = 0
     }
   } catch (error) {
     console.error('加载菜品失败:', error)
   }
+}
+
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadDishes()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadDishes()
 }
 
 const loadRecommendations = async () => {
@@ -227,13 +265,29 @@ const loadRecommendations = async () => {
   }
 }
 
+// 加载符合忌口的推荐菜品
+const loadRestrictionDishes = async () => {
+  if (!userStore.user) return
+  try {
+    console.log('加载符合忌口的菜品...')
+    const dishes = await restrictionApi.getRecommendedDishes(userStore.user.userId)
+    restrictionDishes.value = dishes || []
+    console.log('符合忌口的菜品:', restrictionDishes.value)
+  } catch (error) {
+    console.error('加载符合忌口菜品失败:', error)
+    restrictionDishes.value = []
+  }
+}
+
 const selectCategory = (id) => {
   activeCategory.value = id
+  currentPage.value = 1
   loadDishes()
 }
 
 const selectWindow = (id) => {
   activeWindow.value = id
+  currentPage.value = 1
   loadDishes()
 }
 
@@ -241,16 +295,25 @@ const resetFilters = () => {
   activeCategory.value = 0
   activeWindow.value = 0
   searchKeyword.value = ''
+  currentPage.value = 1
   loadDishes()
 }
 
 const handleSearch = () => {
+  currentPage.value = 1
   loadDishes()
 }
 
 const refreshRecommend = () => {
-  console.log('点击换一批，重新加载推荐...')
-  loadRecommendations()
+  if (!restrictionDishes.value || restrictionDishes.value.length <= 4) {
+    // 如果符合忌口菜品少于等于4个，重新加载数据
+    console.log('符合忌口菜品数量不足，重新加载...')
+    loadRestrictionDishes()
+  } else {
+    // 在符合忌口的菜品里轮换，每次移动4个位置
+    currentRestrictionIndex.value = (currentRestrictionIndex.value + 4) % restrictionDishes.value.length
+    console.log(`切换到符合忌口菜品 ${currentRestrictionIndex.value + 1}-${Math.min(currentRestrictionIndex.value + 4, restrictionDishes.value.length)}/${restrictionDishes.value.length}`)
+  }
 }
 
 const getDishEmoji = (name) => {
@@ -262,6 +325,13 @@ const getDishEmoji = (name) => {
     '粥': '🥣', '豆浆': '🥛', '鸡蛋': '🥚', '水果': '🍎'
   }
   return emojiMap[name] || '🍽️'
+}
+
+const getHealthTagClass = (rating) => {
+  if (!rating) return ''
+  if (rating === '优秀') return 'health-tag-excellent'
+  if (rating === '良好') return 'health-tag-good'
+  return 'health-tag-recommend'
 }
 
 const goToDetail = (id) => {
@@ -304,6 +374,7 @@ onMounted(() => {
   loadWindows()
   loadDishes()
   loadRecommendations()
+  loadRestrictionDishes()
 })
 </script>
 
@@ -433,7 +504,30 @@ onMounted(() => {
 }
 
 .recommend-grid {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.restriction-recommend {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.restriction-recommend .section-header h2 {
+  color: #2e7d32;
+}
+
+.section-desc {
+  color: #666;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dish-card {
@@ -485,6 +579,46 @@ onMounted(() => {
   color: #999;
 }
 
+.recommend-info {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.score-tag {
+  font-size: 12px;
+  color: #3498db;
+  background: #eaf5fb;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.level-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.level-tag.优秀 {
+  color: #27ae60;
+  background: #e8f5e9;
+}
+
+.level-tag.良好 {
+  color: #f39c12;
+  background: #fff8e1;
+}
+
+.level-tag.一般 {
+  color: #95a5a6;
+  background: #ecf0f1;
+}
+
+.level-tag.不合适 {
+  color: #e74c3c;
+  background: #ffebee;
+}
+
 .dish-card el-button {
   width: calc(100% - 30px);
   margin: 0 15px 15px;
@@ -493,6 +627,37 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 50px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 20px 0;
+}
+
+.health-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.health-tag-excellent {
+  background-color: #d4f4dd;
+  color: #2e8b57;
+}
+
+.health-tag-good {
+  background-color: #fff4d6;
+  color: #d49b3a;
+}
+
+.health-tag-recommend {
+  background-color: #e3f2fd;
+  color: #1976d2;
 }
 
 .empty-icon {

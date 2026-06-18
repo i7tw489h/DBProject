@@ -125,6 +125,21 @@ export const nutritionApi = {
   }
 }
 
+export const restrictionApi = {
+  getUserRestrictions(userId) {
+    return instance.get(`/user/restrictions/${userId}`)
+  },
+  saveUserRestriction(data) {
+    return instance.post('/user/restriction', data)
+  },
+  deleteUserRestriction(restrictionId) {
+    return instance.delete(`/user/restriction/${restrictionId}`)
+  },
+  getRecommendedDishes(userId) {
+    return instance.get(`/dishes/recommend/${userId}`)
+  }
+}
+
 export const aiApi = {
   recommendDishes(userId) {
     // 添加时间戳参数防止缓存
@@ -152,7 +167,13 @@ export const adminApi = {
     return instance.delete(`/admin/dishes/${id}`)
   },
   toggleDishStatus(id) {
-    return instance.put('/admin/dishes/status/${id}')
+    return instance.put(`/admin/dishes/status/${id}`)
+  },
+  batchToggleStatus(ids, isActive) {
+    return instance.put('/admin/dishes/batch/status', { ids, isActive })
+  },
+  batchDeleteDishes(ids) {
+    return instance.delete('/admin/dishes/batch', { data: { ids } })
   },
   getSalesRanking() {
     return instance.get('/admin/sales-ranking')
@@ -165,5 +186,46 @@ export const adminApi = {
   },
   getStudentPreferences() {
     return instance.get('/admin/preferences')
+  },
+  // 导出菜品 Excel
+  exportDishesExcel(params) {
+    return instance.get('/admin/dishes/export', { 
+      params,
+      responseType: 'blob'
+    })
+  }
+}
+
+// AI销量预测API
+export const predictionApi = {
+  // 预测指定日期的销量
+  predictSales(targetDate) {
+    return instance.get('/admin/prediction/predict', { 
+      params: { targetDate } 
+    })
+  },
+  // 获取明天预测结果
+  getTomorrowPrediction() {
+    return instance.get('/admin/prediction/tomorrow')
+  },
+  // 获取预测历史
+  getPredictionHistory(days = 7) {
+    return instance.get('/admin/prediction/history', { 
+      params: { days } 
+    })
+  },
+  // 获取预测统计数据
+  getStatistics() {
+    return instance.get('/admin/prediction/statistics')
+  },
+  // 获取备餐建议
+  getSuggestions() {
+    return instance.get('/admin/prediction/suggestions')
+  },
+  // 更新实际销量
+  updateActualSales(predictDate) {
+    return instance.post('/admin/prediction/update-actual', null, {
+      params: { predictDate }
+    })
   }
 }
