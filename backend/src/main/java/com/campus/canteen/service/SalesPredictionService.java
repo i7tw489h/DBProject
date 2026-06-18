@@ -14,11 +14,19 @@ public interface SalesPredictionService {
      * @return 预测结果列表
      */
     List<SalesPrediction> predictSales(LocalDate targetDate);
-
+    
+    /**
+     * 预测销量（支持强制重新生成）
+     * @param targetDate 目标日期
+     * @param forceRegenerate 是否强制重新生成
+     * @return 预测结果列表
+     */
+    List<SalesPrediction> predictSales(LocalDate targetDate, boolean forceRegenerate);
+    
     /**
      * 获取历史预测记录
-     * @param days 向前查询的天数
-     * @return 预测记录列表
+     * @param days 历史天数
+     * @return 历史预测记录列表
      */
     List<SalesPrediction> getPredictionHistory(int days);
 
@@ -33,4 +41,9 @@ public interface SalesPredictionService {
      * @return 统计数据
      */
     PredictionStatistics getStatistics();
+
+    /**
+     * 重置所有预测数据
+     */
+    void resetPredictions();
 }

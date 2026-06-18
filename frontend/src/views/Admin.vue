@@ -17,7 +17,7 @@
           <el-menu-item index="orders" @click="activeMenu = 'orders'">📋 订单管理</el-menu-item>
           <el-menu-item index="inventory" @click="activeMenu = 'inventory'">📦 库存管理</el-menu-item>
           <el-menu-item index="statistics" @click="activeMenu = 'statistics'">📊 数据统计</el-menu-item>
-          <el-menu-item index="prediction" @click="activeMenu = 'prediction'">🤖 AI销量预测</el-menu-item>
+          <el-menu-item index="prediction" @click="switchToPrediction">🤖 AI销量预测</el-menu-item>
         </el-menu>
       </aside>
 
@@ -341,33 +341,48 @@
               <el-button type="primary" @click="generatePrediction" :loading="predictionLoading">
                 生成预测
               </el-button>
-              <el-button type="success" @click="getSuggestions">
+              <el-button type="danger" @click="resetPredictions">
+                重置预测数据
+              </el-button>
+              <el-button 
+                type="success" 
+                @click="getSuggestions" 
+                :loading="suggestionsLoading"
+                :disabled="predictionList.length === 0"
+              >
                 获取备餐建议
+              </el-button>
+              <el-button type="warning" @click="resetSuggestions">
+                重置备餐建议
               </el-button>
             </div>
           </div>
 
           <!-- 预测统计卡片 -->
           <div class="stats-grid">
-            <div class="stats-card">
+            <div class="stats-card" :class="{ 'no-data': predictionList.length === 0 }">
               <span class="stats-icon">🎯</span>
               <p class="stats-value">{{ predictionStats.accuracyRate || 0 }}%</p>
-              <p class="stats-label">预测准确率</p>
+              <p class="stats-label">平均置信度</p>
+              <p v-if="predictionList.length === 0" class="stats-hint">暂无数据</p>
             </div>
-            <div class="stats-card">
+            <div class="stats-card" :class="{ 'no-data': predictionList.length === 0 }">
               <span class="stats-icon">📊</span>
               <p class="stats-value">{{ predictionStats.totalPredictions || 0 }}</p>
-              <p class="stats-label">总预测数</p>
+              <p class="stats-label">预测菜品数</p>
+              <p v-if="predictionList.length === 0" class="stats-hint">暂无数据</p>
             </div>
-            <div class="stats-card">
-              <span class="stats-icon">⚠️</span>
-              <p class="stats-value">{{ predictionStats.averageError || 0 }}</p>
-              <p class="stats-label">平均误差</p>
-            </div>
-            <div class="stats-card">
+            <div class="stats-card" :class="{ 'no-data': predictionList.length === 0 }">
               <span class="stats-icon">✅</span>
+              <p class="stats-value">{{ predictionStats.averageError || 0 }}</p>
+              <p class="stats-label">高置信度预测</p>
+              <p v-if="predictionList.length === 0" class="stats-hint">暂无数据</p>
+            </div>
+            <div class="stats-card" :class="{ 'no-data': predictionList.length === 0 }">
+              <span class="stats-icon">⚠️</span>
               <p class="stats-value">{{ predictionStats.evaluatedPredictions || 0 }}</p>
-              <p class="stats-label">已评估</p>
+              <p class="stats-label">低置信度预测</p>
+              <p v-if="predictionList.length === 0" class="stats-hint">暂无数据</p>
             </div>
           </div>
 
@@ -407,17 +422,11 @@
                   ></el-progress>
                 </template>
               </el-table-column>
-              <el-table-column prop="actualSales" label="实际销量">
-                <template #default="scope">
-                  <span v-if="scope.row.actualSales">{{ scope.row.actualSales }}</span>
-                  <span v-else class="text-muted">-</span>
-                </template>
-              </el-table-column>
             </el-table>
           </div>
 
           <!-- 备餐建议 -->
-          <div class="suggestions-section" v-if="suggestions.length > 0">
+          <div class="suggestions-section">
             <h3>🍽️ 备餐建议</h3>
             <el-alert
               title="基于AI预测生成的建议，帮助您合理备餐，减少浪费"
@@ -425,54 +434,78 @@
               :closable="false"
               style="margin-bottom: 15px;"
             ></el-alert>
-            <el-table :data="suggestions" border class="suggestions-table">
-              <el-table-column prop="dishName" label="菜品名称"></el-table-column>
-              <el-table-column prop="minQuantity" label="最低备餐量">
-                <template #default="scope">
-                  <el-tag type="warning">{{ scope.row.minQuantity }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="recommendedQuantity" label="建议备餐量">
-                <template #default="scope">
-                  <el-tag type="success" size="large">{{ scope.row.recommendedQuantity }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="maxQuantity" label="最大备餐量">
-                <template #default="scope">
-                  <el-tag type="info">{{ scope.row.maxQuantity }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="priority" label="优先级">
-                <template #default="scope">
-                  <el-tag :type="scope.row.priority === 'high' ? 'danger' : scope.row.priority === 'medium' ? 'warning' : 'info'">
-                    {{ scope.row.priority === 'high' ? '高' : scope.row.priority === 'medium' ? '中' : '低' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="confidence" label="置信度">
-                <template #default="scope">
-                  <span>{{ (scope.row.confidence * 100).toFixed(0) }}%</span>
-                </template>
-              </el-table-column>
-            </el-table>
+            
+            <template v-if="suggestionsLoading">
+              <div class="loading-state">
+                <el-loading text="正在生成备餐建议..." spinner="el-icon-loading"></el-loading>
+              </div>
+            </template>
+            <template v-else-if="suggestions.length > 0">
+              <el-table :data="suggestions" border class="suggestions-table">
+                <el-table-column prop="dishName" label="菜品名称"></el-table-column>
+                <el-table-column prop="price" label="价格">
+                  <template #default="scope">
+                    ¥{{ scope.row.price || 0 }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="recommendedQuantity" label="建议备餐量">
+                  <template #default="scope">
+                    <el-tag type="success" size="large">{{ scope.row.recommendedQuantity }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="预计销售额">
+                  <template #default="scope">
+                    ¥{{ ((scope.row.recommendedQuantity || 0) * (scope.row.price || 0)).toFixed(2) }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="minQuantity" label="最低备餐量">
+                  <template #default="scope">
+                    <el-tag type="warning">{{ scope.row.minQuantity }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="maxQuantity" label="最大备餐量">
+                  <template #default="scope">
+                    <el-tag type="info">{{ scope.row.maxQuantity }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="priority" label="优先级">
+                  <template #default="scope">
+                    <el-tag :type="scope.row.priority === 'high' ? 'danger' : scope.row.priority === 'medium' ? 'warning' : 'info'">
+                      {{ scope.row.priority === 'high' ? '高' : scope.row.priority === 'medium' ? '中' : '低' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="confidence" label="置信度">
+                  <template #default="scope">
+                    <span>{{ (scope.row.confidence * 100).toFixed(0) }}%</span>
+                  </template>
+                </el-table-column>
+              </el-table>
 
-            <div class="summary-section">
-              <h4>📋 备餐汇总</h4>
-              <div class="summary-grid">
-                <div class="summary-item">
-                  <span class="summary-label">总菜品数:</span>
-                  <span class="summary-value">{{ suggestions.length }}</span>
-                </div>
-                <div class="summary-item">
-                  <span class="summary-label">建议总份数:</span>
-                  <span class="summary-value highlight">{{ totalRecommendedQuantity }}</span>
-                </div>
-                <div class="summary-item">
-                  <span class="summary-label">预计销售额:</span>
-                  <span class="summary-value highlight">¥{{ estimatedSales }}</span>
+              <div class="summary-section">
+                <h4>📋 备餐汇总</h4>
+                <div class="summary-grid">
+                  <div class="summary-item">
+                    <span class="summary-label">总菜品数:</span>
+                    <span class="summary-value">{{ suggestions.length }}</span>
+                  </div>
+                  <div class="summary-item">
+                    <span class="summary-label">建议总份数:</span>
+                    <span class="summary-value highlight">{{ totalRecommendedQuantity }}</span>
+                  </div>
+                  <div class="summary-item">
+                    <span class="summary-label">预计销售额:</span>
+                    <span class="summary-value highlight">¥{{ estimatedSales }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </template>
+            
+            <template v-else>
+              <div class="empty-state">
+                <el-empty description="暂无数据，请先点击'获取备餐建议'"></el-empty>
+              </div>
+            </template>
           </div>
         </div>
       </main>
@@ -539,9 +572,16 @@ const activeMenu = ref('dishes')
 
 // AI销量预测相关数据
 const predictionList = ref([])
-const predictionStats = ref({})
+const predictionStats = ref({
+  accuracyRate: 0,
+  totalPredictions: 0,
+  averageError: 0,
+  evaluatedPredictions: 0
+})
 const suggestions = ref([])
 const predictionLoading = ref(false)
+const suggestionsLoading = ref(false)  // 备餐建议独立加载状态
+const predictionDate = ref('')
 
 // 计算属性
 const totalRecommendedQuantity = computed(() => {
@@ -557,26 +597,93 @@ const estimatedSales = computed(() => {
 
 // AI销量预测方法
 
-const generatePrediction = async () => {
-  predictionLoading.value = true
+const loadPredictionStats = async () => {
   try {
-    // 使用明天的日期
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const targetDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
-    
-    const result = await predictionApi.predictSales(targetDate)
-    predictionList.value = result
-    ElMessage.success('预测生成成功')
+    const stats = await predictionApi.getStatistics()
+    predictionStats.value = stats
   } catch (error) {
-    console.error('生成预测失败:', error)
-    ElMessage.error('生成预测失败：' + (error.response?.data?.message || error.message))
-  } finally {
-    predictionLoading.value = false
+    console.error('加载统计数据失败:', error)
   }
 }
 
 const getSuggestions = async () => {
+  // 检查是否有预测数据
+  if (predictionList.value.length === 0) {
+    ElMessage.warning('请先生成预测结果，然后再获取备餐建议')
+    return
+  }
+  
+  suggestionsLoading.value = true  // 使用备餐建议的加载状态
+  try {
+    // 直接获取备餐建议（预测数据已经存在）
+    suggestions.value = await predictionApi.getSuggestions()
+    ElMessage.success('备餐建议生成成功')
+    
+    // 更新统计数据
+    await loadPredictionStats()
+  } catch (error) {
+    console.error('生成建议失败:', error)
+    ElMessage.error('生成建议失败：' + (error.response?.data?.message || error.message))
+  } finally {
+    suggestionsLoading.value = false
+  }
+}
+
+const resetSuggestions = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要清空备餐建议吗？',
+      '确认清空',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    suggestions.value = []
+    ElMessage.success('备餐建议已清空')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('清空失败:', error)
+      ElMessage.error('清空备餐建议失败：' + (error.response?.data?.message || error.message))
+    }
+  }
+}
+
+const resetPredictions = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要重置所有预测数据吗？此操作不可恢复！',
+      '确认重置',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await predictionApi.resetPredictions()
+    ElMessage.success('预测数据已重置')
+    
+    // 清空本地数据（不重新生成预测）
+    predictionList.value = []
+    predictionStats.value = {
+      accuracyRate: 0,
+      totalPredictions: 0,
+      averageError: 0,
+      evaluatedPredictions: 0
+    }
+    suggestions.value = []
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('重置失败:', error)
+      ElMessage.error('重置失败：' + (error.response?.data?.message || error.message))
+    }
+  }
+}
+
+const generatePrediction = async (forceRegenerate = false) => {
   predictionLoading.value = true
   try {
     // 使用明天的日期
@@ -584,14 +691,15 @@ const getSuggestions = async () => {
     tomorrow.setDate(tomorrow.getDate() + 1)
     const targetDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
     
-    // 先确保有预测数据
-    await predictionApi.predictSales(targetDate)
-    // 然后获取备餐建议
-    suggestions.value = await predictionApi.getSuggestions()
-    ElMessage.success('备餐建议生成成功')
+    const result = await predictionApi.predictSales(targetDate, forceRegenerate)
+    predictionList.value = result
+    ElMessage.success('预测生成成功')
+    
+    // 更新统计数据
+    await loadPredictionStats()
   } catch (error) {
-    console.error('获取备餐建议失败:', error)
-    ElMessage.error('获取备餐建议失败：' + (error.response?.data?.message || error.message))
+    console.error('生成预测失败:', error)
+    ElMessage.error('生成预测失败：' + (error.response?.data?.message || error.message))
   } finally {
     predictionLoading.value = false
   }
@@ -982,6 +1090,36 @@ onMounted(() => {
 watch([orderStatus, pickupTimeFilter, windowFilter], () => {
   orderCurrentPage.value = 1
 })
+
+// 监听菜单切换，清空预测相关数据
+watch(activeMenu, (newMenu) => {
+  if (newMenu !== 'prediction') {
+    predictionList.value = []
+    predictionStats.value = {
+      accuracyRate: 0,
+      totalPredictions: 0,
+      averageError: 0,
+      evaluatedPredictions: 0
+    }
+    suggestions.value = []
+    predictionDate.value = ''
+  }
+})
+
+// 切换到预测页面
+const switchToPrediction = () => {
+  // 清空之前的数据，确保页面干净
+  predictionList.value = []
+  predictionStats.value = {
+    accuracyRate: 0,
+    totalPredictions: 0,
+    averageError: 0,
+    evaluatedPredictions: 0
+  }
+  suggestions.value = []
+  predictionDate.value = ''
+  activeMenu.value = 'prediction'
+}
 </script>
 
 <style scoped>

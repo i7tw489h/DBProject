@@ -192,9 +192,9 @@ export const adminApi = {
 // AI销量预测API
 export const predictionApi = {
   // 预测指定日期的销量
-  predictSales(targetDate) {
+  predictSales(targetDate, forceRegenerate = false) {
     return instance.get('/admin/prediction/predict', { 
-      params: { targetDate } 
+      params: { targetDate, forceRegenerate } 
     })
   },
   // 获取明天预测结果
@@ -220,5 +220,9 @@ export const predictionApi = {
     return instance.post('/admin/prediction/update-actual', null, {
       params: { predictDate }
     })
+  },
+  // 重置预测数据
+  resetPredictions() {
+    return instance.delete('/admin/prediction/reset')
   }
 }
