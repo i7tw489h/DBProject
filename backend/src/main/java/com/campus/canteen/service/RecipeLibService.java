@@ -1,4 +1,7 @@
 package com.campus.canteen.service;
 
-public interface RecipeLibService {
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.campus.canteen.entity.RecipeLib;
+
+public interface RecipeLibService extends IService<RecipeLib> {
 }

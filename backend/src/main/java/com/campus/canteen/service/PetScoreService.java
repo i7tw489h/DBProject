@@ -1,4 +1,8 @@
 package com.campus.canteen.service;
 
-public interface PetScoreService {
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.campus.canteen.entity.PetScore;
+
+public interface PetScoreService extends IService<PetScore> {
+    PetScore getByUserId(Long userId);
 }

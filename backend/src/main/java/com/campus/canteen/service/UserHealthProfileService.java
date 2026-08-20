@@ -1,4 +1,8 @@
 package com.campus.canteen.service;
 
-public interface UserHealthProfileService {
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.campus.canteen.entity.UserHealthProfile;
+
+public interface UserHealthProfileService extends IService<UserHealthProfile> {
+    UserHealthProfile getByUserId(Long userId);
 }

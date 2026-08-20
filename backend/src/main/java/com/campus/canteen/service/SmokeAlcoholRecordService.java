@@ -1,4 +1,9 @@
 package com.campus.canteen.service;
 
-public interface SmokeAlcoholRecordService {
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.campus.canteen.entity.SmokeAlcoholRecord;
+import java.util.List;
+
+public interface SmokeAlcoholRecordService extends IService<SmokeAlcoholRecord> {
+    List<SmokeAlcoholRecord> listByUserId(Long userId);
 }

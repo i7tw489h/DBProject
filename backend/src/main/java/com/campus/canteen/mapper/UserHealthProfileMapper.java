@@ -1,4 +1,9 @@
 package com.campus.canteen.mapper;
 
-public interface UserHealthProfileMapper {
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.campus.canteen.entity.UserHealthProfile;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface UserHealthProfileMapper extends BaseMapper<UserHealthProfile> {
 }

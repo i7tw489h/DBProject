@@ -1,4 +1,9 @@
 package com.campus.canteen.mapper;
 
-public interface FamilyRelationMapper {
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.campus.canteen.entity.FamilyRelation;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface FamilyRelationMapper extends BaseMapper<FamilyRelation> {
 }
