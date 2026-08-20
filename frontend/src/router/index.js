@@ -1,66 +1,45 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores'
 
 const routes = [
   {
-    path: '/login',
-    name: 'Login',
-    component: () => import('../views/Login.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/admin-login',
-    name: 'AdminLogin',
-    component: () => import('../views/AdminLogin.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/register',
-    name: 'Register',
-    component: () => import('../views/Register.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
     path: '/',
-    name: 'Home',
-    component: () => import('../views/Home.vue'),
-    meta: { requiresAuth: true }
+    redirect:'/login'
   },
   {
-    path: '/cart',
-    name: 'Cart',
-    component: () => import('../views/Cart.vue'),
-    meta: { requiresAuth: true }
+    path: '/login',
+    component: () => import("@/views/login.vue")
   },
   {
-    path: '/orders',
-    name: 'Orders',
-    component: () => import('../views/Orders.vue'),
-    meta: { requiresAuth: true }
+    path: '/initProfile',
+    component: () => import("@/views/initProfile.vue")
   },
   {
-    path: '/nutrition',
-    name: 'Nutrition',
-    component: () => import('../views/Nutrition.vue'),
-    meta: { requiresAuth: true }
+    path: '/home',
+    component: () => import("@/views/home.vue")
   },
   {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('../views/Profile.vue'),
-    meta: { requiresAuth: true }
+    path: '/dietAdd',
+    component: () => import("@/views/dietAdd.vue")
   },
   {
-    path: '/admin',
-    name: 'Admin',
-    component: () => import('../views/Admin.vue'),
-    meta: { requiresAuth: true, isCanteenAdmin: true }
+    path: '/smokeAlcohol',
+    component: () => import("@/views/smokeAlcohol.vue")
   },
   {
-    path: '/dish-detail/:id',
-    name: 'DishDetail',
-    component: () => import('../views/DishDetail.vue'),
-    meta: { requiresAuth: true }
+    path: '/family/bind',
+    component: () => import("@/views/family/bind.vue")
+  },
+  {
+    path: '/family/message',
+    component: () => import("@/views/family/message.vue")
+  },
+  {
+    path: '/pet',
+    component: () => import("@/views/pet.vue")
+  },
+  {
+    path: '/report',
+    component: () => import("@/views/report.vue")
   }
 ]
 
@@ -69,33 +48,11 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const userStore = useUserStore()
-  const canteenAdmin = localStorage.getItem('canteenAdmin')
-
-  if (to.meta.isCanteenAdmin) {
-    if (!canteenAdmin) {
-      next('/admin-login')
-      return
-    }
-    next()
-    return
+router.beforeEach((to,from,next)=>{
+  const userId = localStorage.getItem('userId')
+  if(to.path !== '/login' && !userId){
+    return next('/login')
   }
-
-  if (to.meta.requiresAuth) {
-    if (!userStore.isLogin) {
-      next('/login')
-      return
-    }
-  }
-
-  if (to.path === '/login' || to.path === '/register') {
-    if (userStore.isLogin) {
-      next('/')
-      return
-    }
-  }
-
   next()
 })
 

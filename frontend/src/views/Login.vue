@@ -1,138 +1,125 @@
 <template>
-  <div class="login-container">
-    <div class="login-card">
-      <div class="logo">
-        <span class="logo-icon">🍽️</span>
-        <h1>校园AI食堂</h1>
-        <p>智能点餐与营养推荐系统</p>
-      </div>
-      
-      <el-form :model="form" ref="formRef" label-width="80px" class="login-form">
-        <el-form-item label="账号" prop="username">
-          <el-input 
-            v-model="form.username" 
-            placeholder="请输入账号"
-            prefix-icon="User"
-          />
-        </el-form-item>
-        
-        <el-form-item label="密码" prop="password">
-          <el-input 
-            v-model="form.password" 
-            type="password" 
-            placeholder="请输入密码"
-            prefix-icon="Lock"
-          />
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button type="primary" class="login-btn" @click="handleLogin">登录</el-button>
-        </el-form-item>
-        
-        <div class="register-link">
-          <span>还没有账号？</span>
-          <a href="/register">立即注册</a>
-        </div>
-      </el-form>
+  <div class="login-page">
+    <div class="login-box">
+      <h1>家庭生活健康辅助管理系统</h1>
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="登录" name="login">
+          <el-form :model="loginForm">
+            <el-form-item label="账号">
+              <el-input v-model="loginForm.username"></el-input>
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input v-model="loginForm.password" type="password"></el-input>
+            </el-form-item>
+            <el-button type="primary" class="login-btn" @click="handleLogin">登录</el-button>
+          </el-form>
+        </el-tab-pane>
+        <el-tab-pane label="注册" name="register">
+          <el-form :model="regForm">
+            <el-form-item label="账号">
+              <el-input v-model="regForm.username"></el-input>
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input v-model="regForm.password" type="password"></el-input>
+            </el-form-item>
+            <el-form-item label="昵称">
+              <el-input v-model="regForm.name"></el-input>
+            </el-form-item>
+            <el-form-item label="学院">
+              <el-input v-model="regForm.college"></el-input>
+            </el-form-item>
+            <el-form-item label="手机号">
+              <el-input v-model="regForm.phone"></el-input>
+            </el-form-item>
+            <el-button type="success" class="login-btn" @click="handleRegister">注册</el-button>
+          </el-form>
+        </el-tab-pane>
+      </el-tabs>
+
+      <div class="tip-text">健康打卡 · 饮食记录 · 萌宠激励</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
-import { userApi } from '@/api'
-import { useUserStore } from '@/stores'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { userApi } from '@/api'
+import { ElMessage } from 'element-plus'
+import { loginApi } from '@/api/user'
+import { getProfile } from '@/api/healthProfile'
 
 const router = useRouter()
-const userStore = useUserStore()
+const activeTab = ref('login')
 
-const formRef = ref(null)
-const form = reactive({
-  username: '',
-  password: ''
+const loginForm = ref({ username:'',password:'' })
+const regForm = ref({
+  username:'',
+  password:'',
+  name:'',
+  college:'',
+  phone:''
 })
 
+// 登录
 const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    ElMessage.warning('请填写账号和密码')
-    return
-  }
-  
   try {
-    const result = await userApi.login(form)
-    userStore.login(result.user)
-    ElMessage.success('登录成功')
-    router.push('/')
-  } catch (error) {
-    ElMessage.error(error.message || '登录失败')
+    const res = await loginApi(loginForm.value)
+    console.log("后端返回res：", res)
+    // 判断业务code等于200才算成功
+    if(res.code === 200){
+      const user = res.data
+      localStorage.setItem("userId", user.id)
+      localStorage.setItem("username", user.username)
+      ElMessage.success("登录成功")
+      console.log("登录成功，userId：", user.id)
+      router.push("/home")
+    }else{
+      ElMessage.error(res.msg || "登录失败")
+    }
+  } catch (err) {
+    ElMessage.error("请求异常，请检查后端服务")
+    console.error("登录失败", err)
+  }
+}
+
+const handleRegister = async ()=>{
+  try{
+    await userApi.register(regForm.value)
+    ElMessage.success('注册成功，请登录')
+    activeTab.value = 'login'
+  }catch(err){
+    ElMessage.error('注册失败')
   }
 }
 </script>
 
 <style scoped>
-.login-container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
+.login-page{
+  width:100vw;
+  height:100vh;
+  background:#6366f1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
-
-.login-card {
-  background: white;
-  border-radius: 20px;
-  padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 400px;
+.login-box{
+  width:480px;
+  background:#fff;
+  padding:36px;
+  border-radius:16px;
 }
-
-.logo {
-  text-align: center;
-  margin-bottom: 30px;
+h1{
+  text-align:center;
+  margin-bottom:20px;
 }
-
-.logo-icon {
-  font-size: 60px;
-  display: block;
-  margin-bottom: 10px;
+.login-btn{
+  width:100%;
 }
-
-.logo h1 {
-  color: #333;
-  margin-bottom: 5px;
-}
-
-.logo p {
-  color: #999;
-  font-size: 14px;
-}
-
-.login-form {
-  margin-top: 20px;
-}
-
-.login-btn {
-  width: 100%;
-  height: 45px;
-  font-size: 16px;
-}
-
-.register-link {
-  text-align: center;
-  margin-top: 20px;
-  color: #666;
-}
-
-.register-link a {
-  color: #667eea;
-  text-decoration: none;
-}
-
-.register-link a:hover {
-  text-decoration: underline;
+.tip-text{
+  text-align:center;
+  margin-top:20px;
+  color:#666;
+  font-size:15px;
 }
 </style>

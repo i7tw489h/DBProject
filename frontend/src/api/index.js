@@ -8,6 +8,7 @@ const instance = axios.create({
   }
 })
 
+// 响应拦截器
 instance.interceptors.response.use(
   response => {
     const { code, message, data } = response.data
@@ -23,6 +24,7 @@ instance.interceptors.response.use(
   }
 )
 
+// 用户登录注册
 export const userApi = {
   register(data) {
     return instance.post('/user/register', data)
@@ -33,137 +35,74 @@ export const userApi = {
   getUserInfo(userId) {
     return instance.get(`/user/info/${userId}`)
   },
-  updateProfile(data) {
-    return instance.put('/user/update-profile', data)
-  },
   updateUser(data) {
     return instance.put('/user/update', data)
-  },
-  updatePassword(data) {
-    return instance.put('/user/password', data)
   }
 }
 
-export const dishApi = {
-  getDishes(params) {
-    return instance.get('/dishes', { params })
+// 健康档案（初始化页面）
+export const healthProfileApi = {
+  save(data) {
+    return instance.post('/healthProfile/save', data)
   },
-  getDishById(id) {
-    return instance.get(`/dishes/${id}`)
-  },
-  getCategories() {
-    return instance.get('/categories')
-  },
-  getWindows() {
-    return instance.get('/windows')
-  },
-  searchDishes(keyword) {
-    return instance.get('/dishes/search', { params: { keyword } })
+  getByUserId(userId) {
+    return instance.get(`/healthProfile/get/${userId}`)
   }
 }
 
-export const cartApi = {
-  getCart(userId) {
-    return instance.get(`/cart/${userId}`)
+// 饮食打卡
+export const dietRecordApi = {
+  save(data) {
+    return instance.post('/dietRecord/save', data)
   },
-  addToCart(data) {
-    return instance.post('/cart/add', data)
-  },
-  updateCart(data) {
-    return instance.put('/cart/update', data)
-  },
-  removeFromCart(cartId) {
-    return instance.delete(`/cart/${cartId}`)
-  },
-  clearCart(userId) {
-    return instance.delete(`/cart/clear/${userId}`)
+  listByUserId(userId) {
+    return instance.get(`/dietRecord/list/${userId}`)
   }
 }
 
-export const orderApi = {
-  submitOrder(data) {
-    return instance.post('/order/submit', data)
+// 烟酒填报
+export const smokeAlcoholApi = {
+  save(data) {
+    return instance.post('/smokeAlcohol/save', data)
   },
-  getOrders(userId, status, page = 1, pageSize = 10) {
-    return instance.get('/order/list', { params: { userId, status, page, pageSize } })
-  },
-  getOrderDetail(orderId) {
-    return instance.get(`/order/detail/${orderId}`)
-  },
-  cancelOrder(orderId) {
-    return instance.put(`/order/cancel/${orderId}`)
-  },
-  getAllOrders(params) {
-    return instance.get('/order/all', { params })
-  },
-  acceptOrder(orderId) {
-    return instance.put(`/order/accept/${orderId}`)
-  },
-  serveOrder(orderId) {
-    return instance.put(`/order/serve/${orderId}`)
-  },
-  finishOrder(orderId) {
-    return instance.put(`/order/finish/${orderId}`)
-  },
-  deleteOrder(orderId) {
-    return instance.delete(`/order/${orderId}`)
+  listByUserId(userId) {
+    return instance.get(`/smokeAlcohol/list/${userId}`)
   }
 }
 
-export const nutritionApi = {
-  getTodayNutrition(userId) {
-    return instance.get(`/nutrition/today/${userId}`)
+// 亲属绑定、留言
+export const familyApi = {
+  bind(data) {
+    return instance.post('/family/bind', data)
   },
-  getHistoryNutrition(userId, days) {
-    return instance.get(`/nutrition/history/${userId}`, { params: { days } })
+  getFamilyList(userId) {
+    return instance.get(`/family/list/${userId}`)
   },
-  getHealthEvaluation(userId) {
-    return instance.get(`/nutrition/evaluation/${userId}`)
-  },
-  getNutritionTargets(userId) {
-    return instance.get(`/nutrition/targets/${userId}`)
+  sendMessage(data) {
+    return instance.post('/family/message', data)
   }
 }
 
-export const aiApi = {
-  recommendDishes(userId) {
-    // 添加时间戳参数防止缓存
-    return instance.get(`/ai/recommend/${userId}`, { params: { t: Date.now() } })
+// 电子萌宠
+export const petApi = {
+  getPet(userId) {
+    return instance.get(`/pet/get/${userId}`)
   },
-  intelligentMeal(userId, type) {
-    return instance.get(`/ai/meal/${userId}`, { params: { type } })
-  },
-  salesPrediction() {
-    return instance.get('/ai/prediction')
+  updatePet(data) {
+    return instance.post('/pet/update', data)
   }
 }
 
-export const adminApi = {
-  getDishList(params) {
-    return instance.get('/admin/dishes', { params })
-  },
-  addDish(data) {
-    return instance.post('/admin/dishes', data)
-  },
-  updateDish(data) {
-    return instance.put('/admin/dishes', data)
-  },
-  deleteDish(id) {
-    return instance.delete(`/admin/dishes/${id}`)
-  },
-  toggleDishStatus(id) {
-    return instance.put('/admin/dishes/status/${id}')
-  },
-  getSalesRanking() {
-    return instance.get('/admin/sales-ranking')
-  },
-  getSalesStatistics() {
-    return instance.get('/admin/sales-statistics')
-  },
-  getLowStockAlert() {
-    return instance.get('/admin/low-stock')
-  },
-  getStudentPreferences() {
-    return instance.get('/admin/preferences')
+// 食谱
+export const recipeApi = {
+  getRecipeByTag(tagIds) {
+    return instance.get('/recipe/list', { params: { tagIds } })
+  }
+}
+
+// 周报统计
+export const reportApi = {
+  getWeekReport(userId) {
+    return instance.get(`/report/week/${userId}`)
   }
 }
